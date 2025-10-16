@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v9.1 (ID Local)</title>
+    <title>Simulador Neuroquímico v9.2 (Corregido)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -520,5 +520,82 @@
                     });
                 },
                 
-                openEventModal(t){this.state.currentEventType=t;const e=`<div class="grid grid-cols-2 gap-4"><div><label for="param-date" class="block text-gray-300 mb-1 font-semibold">Fecha</label>
+                openEventModal(t){this.state.currentEventType=t;const e=`<div class="grid grid-cols-2 gap-4"><div><label for="param-date" class="block text-gray-300 mb-1 font-semibold">Fecha</label><input type="date" id="param-date" class="w-full bg-base-300 rounded-lg px-4 py-3" required></div><div><label for="param-time" class="block text-gray-300 mb-1 font-semibold">Hora</label><input type="time" id="param-time" class="w-full bg-base-300 rounded-lg px-4 py-3" required></div></div>`,i={alcohol:{title:"Consumo de Alcohol",inputs:`<label class="font-semibold">Nº de Bebidas</label><input type="number" id="param-cantidad" value="1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},modafinilo:{title:"Dosis de Modafinilo",inputs:`<label class="font-semibold">Dosis (mg)</label><input type="number" id="param-cantidad" value="100" step="50" min="50" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},ejercicio:{title:"Sesión de Ejercicio",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="30" step="10" min="10" class="w-full bg-base-300 rounded-lg px-4 py-3" required><label class="font-semibold">Intensidad</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.7">Baja</option><option value="1.0" selected>Media</option><option value="1.5">Alta</option></select>${e}`},porno:{title:"Consumo de Pornografía",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="15" step="5" min="5" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},cafeina:{title:"Consumo de Cafeína",inputs:`<label class="font-semibold">Nº de Tazas</label><input type="number" id="param-cantidad" value="1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},te:{title:"Consumo de Té",inputs:`<label class="font-semibold">Nº de Tazas</label><input type="number" id="param-cantidad" value="1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},azucar:{title:"Consumo de Azúcar",inputs:`<label class="font-semibold">Intensidad</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.5">Baja</option><option value="1.0" selected>Media</option><option value="2.0">Alta</option></select>${e}`},sueño:{title:"Registro de Sueño",inputs:`<label class="font-semibold">Horas Dormidas</label><input type="number" id="param-cantidad" step="0.5" value="8" min="0" class="w-full bg-base-300 rounded-lg px-4 py-3" required><label class="font-semibold">Calidad del Sueño</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.5">Mala</option><option value="1.0" selected>Regular</option><option value="1.5">Buena</option></select>${e}`},hrv:{title:"Registro de HRV",inputs:`<label class="font-semibold">Valor HRV (ms)</label><input type="number" id="param-cantidad" value="55" min="10" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},masturbacion:{title:"Sesión de Masturbación",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="10" step="5" min="5" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},orgasmo:{title:"Registro de Orgasmo",inputs:e}};this.ui.eventModalTitle.textContent=i[t].title,this.ui.eventInputsContainer.innerHTML=i[t].inputs;const s=new Date;document.getElementById("param-date").valueAsDate=s,document.getElementById("param-time").value=s.toTimeString().slice(0,5),this.ui.eventModal.classList.add("flex"),this.ui.eventModal.classList.remove("hidden"),setTimeout(()=>this.ui.eventModal.querySelector(".modal-content").classList.remove("scale-95"),10)},
+                
+                closeEventModal(){this.ui.eventModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.ui.eventModal.classList.add("hidden"),this.ui.eventModal.classList.remove("flex")},300)},
+                
+                calculateFactors(){const{sexo:t,peso:e}=this.state.userProfile,i=Math.max(1,e);return{factorSexoAlcohol:"Mujer"===t?1.3:1,factorSexoModafiniloDuracionMultiplier:"Mujer"===t?1.2:1,factorPeso:75/i}},
+
+                getEventEffect(event, factors, now) {
+                    const startTime = new Date(event.startTime).getTime();
+                    const minutesElapsed = (now - startTime) / 60000;
+                    if (minutesElapsed < 0) return { effect: 0, finished: false };
+                    let effectValue = 0;
+                    let isFinished = false;
+                    const formulas = { alcohol: { duration: 360, apply: p => { const q = p.cantidad || 1, u = 8 * q * factors.factorSexoAlcohol * factors.factorPeso, d = -16 * q * factors.factorSexoAlcohol * factors.factorPeso; if (minutesElapsed < 60) return minutesElapsed / 60 * u; if (minutesElapsed < 180) return u + (minutesElapsed - 60) / 120 * (d - u); if (minutesElapsed < 360) return d * (1 - (minutesElapsed - 180) / 180); return 0; } }, modafinilo: { duration: 1020, apply: p => { const d = (p.cantidad || 100) / 100, pk = 35 * d * factors.factorPeso, pD = 660 * factors.factorSexoModafiniloDuracionMultiplier; if (minutesElapsed < 120) return minutesElapsed / 120 * pk; if (minutesElapsed < 120 + pD) return pk; if (minutesElapsed < 120 + pD + 240) return pk * (1 - (minutesElapsed - 120 - pD) / 240); return 0; } }, ejercicio: { duration: p => (p.cantidad || 30) + 120, apply: p => { const d = p.cantidad || 30, i = p.intensidad || 1, pk = 10 * i * factors.factorPeso, pD = Math.max(0, d - 15); if (minutesElapsed < 15) return minutesElapsed / 15 * pk; if (minutesElapsed < 15 + pD) return pk; if (minutesElapsed < 15 + pD + 120) return pk * (1 - (minutesElapsed - 15 - pD) / 120); return 0; } }, porno: { duration: p => (p.cantidad || 15) + 90, apply: p => { const d = p.cantidad || 15, u = 5 + d / 10, dn = -10; if (minutesElapsed < d) return minutesElapsed / d * u; if (minutesElapsed < d + 20) return u + (minutesElapsed - d) / 20 * (dn - u); if (minutesElapsed < d + 90) return dn * (1 - (minutesElapsed - d - 20) / 70); return 0; } }, cafeina: { duration: 240, apply: p => { const q = p.cantidad || 1, u = 20 * q, d = -5 * q; if (minutesElapsed < 30) return minutesElapsed / 30 * u; if (minutesElapsed < 90) return u + (minutesElapsed - 30) / 60 * (d - u); if (minutesElapsed < 240) return d * (1 - (minutesElapsed - 90) / 150); return 0; } }, te: { duration: 300, apply: p => { const q = p.cantidad || 1, u = 12 * q, d = -2 * q; if (minutesElapsed < 45) return minutesElapsed / 45 * u; if (minutesElapsed < 120) return u + (minutesElapsed - 45) / 75 * (d - u); if (minutesElapsed < 300) return d * (1 - (minutesElapsed - 120) / 180); return 0; } }, azucar: { duration: 120, apply: p => { const i = p.intensidad || 1, u = 25 * i, d = -15 * i; if (minutesElapsed < 15) return minutesElapsed / 15 * u; if (minutesElapsed < 45) return u + (minutesElapsed - 15) / 30 * (d - u); if (minutesElapsed < 120) return d * (1 - (minutesElapsed - 45) / 75); return 0; } }, sensacion: { duration: 60, apply: p => { const v = p.cantidad, pk = (v - 5) * 2.5; return minutesElapsed < 60 ? pk * (1 - minutesElapsed / 60) : 0; } }, sueño: { duration: 1440, apply: p => { const b = (p.cantidad - 4) * 2, t = b * (p.intensidad || 1); return minutesElapsed < 1440 ? t * (1 - minutesElapsed / 1440) : 0; } }, hrv: { duration: 180, apply: p => { const e = (p.cantidad - 55) * 0.3; return minutesElapsed < 180 ? e * (1 - minutesElapsed / 180) : 0; } }, masturbacion: { duration: p => (p.cantidad || 10) + 50, apply: p => { const d = p.cantidad || 10, u = 15, dn = -5; if (minutesElapsed < d) return minutesElapsed / d * u; if (minutesElapsed < d + 50) return u + (minutesElapsed - d) / 50 * (dn - u); return 0; } }, orgasmo: { duration: 150, apply: () => { const u = 40, d = -20; if (minutesElapsed < 3) return u; if (minutesElapsed < 15) return d; if (minutesElapsed < 150) return d * (1 - (minutesElapsed - 15) / 135); return 0; } } };
+                    const formula = formulas[event.type];
+                    if (formula) {
+                        const totalDuration = typeof formula.duration === 'function' ? formula.duration(event.params) : formula.duration;
+                        if (minutesElapsed > totalDuration) {
+                            isFinished = true;
+                            effectValue = 0;
+                        } else {
+                            effectValue = formula.apply(event.params);
+                        }
+                    }
+                    return { effect: effectValue, finished: isFinished };
+                },
+                
+                updateChart() {
+                    if (!this.state.chart) return;
+                    try {
+                        const factors = this.calculateFactors();
+                        const baseLevel = this.state.userProfile.dynamicBaseLevel;
+                        const now = new Date();
+                        const twoDaysAgo = new Date(now);
+                        twoDaysAgo.setDate(now.getDate() - 2);
+                        twoDaysAgo.setHours(0, 0, 0, 0);
+                        const startDate = twoDaysAgo.getTime();
+                        const oneDayForward = new Date(now);
+                        oneDayForward.setDate(now.getDate() + 1);
+                        const endDate = oneDayForward.getTime();
+                        const historicalPoints = [];
+                        const forecastPoints = [];
+                        const interval = 15 * 60 * 1000; 
+
+                        for (let time = startDate; time <= endDate; time += interval) {
+                            let totalEffect = 0;
+                            this.state.events.forEach(event => {
+                                totalEffect += this.getEventEffect(event, factors, time).effect;
+                            });
+                            totalEffect += this.calculateSleepDebt(time);
+                            const pointValue = Math.round(baseLevel + totalEffect);
+                            const point = { x: time, y: pointValue };
+                            if (time <= now.getTime()) {
+                                historicalPoints.push(point);
+                            } else {
+                                if (forecastPoints.length === 0 && historicalPoints.length > 0) {
+                                    forecastPoints.push(historicalPoints[historicalPoints.length - 1]);
+                                }
+                                forecastPoints.push(point);
+                            }
+                        }
+                        this.state.chart.data.datasets[0].data = historicalPoints;
+                        this.state.chart.data.datasets[1].data = forecastPoints;
+                        this.state.chart.update('none'); 
+                    } catch (t) {
+                        console.error("Error updating chart:", t);
+                    }
+                },
+                
+                attachEventListeners(){this.ui.profileForm.addEventListener("submit",t=>this.saveProfile(t)),this.ui.editProfileBtn.addEventListener("click",()=>this.ui.profileSetup.classList.remove("hidden")),document.querySelectorAll(".event-btn").forEach(t=>t.addEventListener("click",()=>this.openEventModal(t.dataset.event))),this.ui.eventForm.addEventListener("submit",t=>this.handleEventSubmit(t)),this.ui.cancelEventBtn.addEventListener("click",()=>this.closeEventModal()),this.ui.sensacionSlider.addEventListener("input",t=>{this.ui.sensacionValue.textContent=t.target.value}),this.ui.addSensacionBtn.addEventListener("click",()=>{const t=parseFloat(this.ui.sensacionSlider.value);this.addEvent("sensacion",{cantidad:t},new Date),this.ui.sensacionSlider.value=5,this.ui.sensacionValue.textContent="5"}),this.ui.analyzeGeminiBtn.addEventListener("click",()=>this.handleGeminiAnalysis()),this.ui.closeGeminiBtn.addEventListener("click",()=>{this.ui.geminiModal.classList.add("hidden"),this.ui.geminiModal.classList.remove("flex")})}
+            };
+
+            App.init();
+        });
+    </script>
+</body>
+</html>
+
+
 
