@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v9.3 (Previsión Suavizada)</title>
+    <title>Simulador Neuroquímico v9.4 (Previsión Corregida)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -376,12 +376,7 @@
                         .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 
                     if (sleepEvents.length === 0) {
-                        if (this.state.events.length > 0) {
-                             const firstEventTime = this.state.events.sort((a,b) => new Date(a.startTime) - new Date(b.startTime))[0].startTime;
-                             const hoursSinceFirstEvent = (now - new Date(firstEventTime).getTime()) / 3600000;
-                             if (hoursSinceFirstEvent > 24) return -((hoursSinceFirstEvent - 24) * 1); // Reduced penalty
-                        }
-                        return 0; 
+                        return 0; // Don't calculate debt if sleep is not tracked
                     }
 
                     const lastSleep = sleepEvents[0];
@@ -391,9 +386,11 @@
 
                     const hoursSinceSleepEnd = (now - lastSleepEnd) / 3600000;
                     
+                    // Penalization starts 16 hours after waking up
                     if (hoursSinceSleepEnd > 16) {
                         const deprivationHours = Math.floor(hoursSinceSleepEnd - 16);
-                        const penalty = deprivationHours * 1; // -1 point per hour, not 2
+                        // Softer penalty: -0.5 points per hour of deprivation
+                        const penalty = deprivationHours * 0.5; 
                         return -penalty;
                     }
                     return 0;
@@ -430,7 +427,7 @@
                     this.ui.baseLevelDisplay.textContent = this.state.userProfile.dynamicBaseLevel.toFixed(2);
                     
                     if (sleepDebt < 0) {
-                        this.ui.sleepDebtIndicator.textContent = `Deuda de Sueño: ${sleepDebt} pts`;
+                        this.ui.sleepDebtIndicator.textContent = `Deuda de Sueño: ${sleepDebt.toFixed(1)} pts`;
                         this.ui.sleepDebtIndicator.classList.remove('hidden');
                     } else {
                         this.ui.sleepDebtIndicator.classList.add('hidden');
@@ -596,4 +593,6 @@
     </script>
 </body>
 </html>
+
+
 
