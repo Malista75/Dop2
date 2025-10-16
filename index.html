@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v9.6 (Deuda de Sueño Corregida)</title>
+    <title>Simulador Neuroquímico v9.7 (Deuda de Sueño Lógica)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -375,15 +375,19 @@
                         .filter(e => e.type === 'sueño')
                         .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 
-                    if (sleepEvents.length === 0) return 0; 
+                    if (sleepEvents.length === 0) return 0;
 
                     const lastSleep = sleepEvents[0];
                     const lastSleepStart = new Date(lastSleep.startTime).getTime();
-                    const hoursSinceSleepStart = (now - lastSleepStart) / 3600000;
+                    const lastSleepDurationHours = lastSleep.params.cantidad || 0;
+                    const lastSleepEnd = lastSleepStart + (lastSleepDurationHours * 3600000); 
 
-                    if (hoursSinceSleepStart > 24) {
-                        const deprivationHours = Math.floor(hoursSinceSleepStart - 24);
-                        const penalty = deprivationHours * 1.5; 
+                    const hoursSinceWaking = (now - lastSleepEnd) / 3600000;
+                    
+                    const awakeThreshold = 18; // Penalization starts after 18 hours awake
+                    if (hoursSinceWaking > awakeThreshold) {
+                        const deprivationHours = Math.floor(hoursSinceWaking - awakeThreshold);
+                        const penalty = deprivationHours * 0.5; // -0.5 points per hour
                         return -penalty;
                     }
                     return 0;
@@ -586,6 +590,7 @@
     </script>
 </body>
 </html>
+
 
 
 
