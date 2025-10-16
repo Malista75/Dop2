@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v9.2 (Corregido)</title>
+    <title>Simulador Neuroquímico v9.3 (Previsión Suavizada)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -379,7 +379,7 @@
                         if (this.state.events.length > 0) {
                              const firstEventTime = this.state.events.sort((a,b) => new Date(a.startTime) - new Date(b.startTime))[0].startTime;
                              const hoursSinceFirstEvent = (now - new Date(firstEventTime).getTime()) / 3600000;
-                             if (hoursSinceFirstEvent > 24) return -((hoursSinceFirstEvent - 24) * 2);
+                             if (hoursSinceFirstEvent > 24) return -((hoursSinceFirstEvent - 24) * 1); // Reduced penalty
                         }
                         return 0; 
                     }
@@ -393,7 +393,7 @@
                     
                     if (hoursSinceSleepEnd > 16) {
                         const deprivationHours = Math.floor(hoursSinceSleepEnd - 16);
-                        const penalty = deprivationHours * 2;
+                        const penalty = deprivationHours * 1; // -1 point per hour, not 2
                         return -penalty;
                     }
                     return 0;
