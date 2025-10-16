@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v9.4 (Previsión Corregida)</title>
+    <title>Simulador Neuroquímico v9.5 (Ciclo de Sueño Fijo)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -375,22 +375,16 @@
                         .filter(e => e.type === 'sueño')
                         .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 
-                    if (sleepEvents.length === 0) {
-                        return 0; // Don't calculate debt if sleep is not tracked
-                    }
+                    if (sleepEvents.length === 0) return 0;
 
                     const lastSleep = sleepEvents[0];
                     const lastSleepStart = new Date(lastSleep.startTime).getTime();
-                    const lastSleepDurationHours = lastSleep.params.cantidad || 0;
-                    const lastSleepEnd = lastSleepStart + (lastSleepDurationHours * 3600000);
-
-                    const hoursSinceSleepEnd = (now - lastSleepEnd) / 3600000;
                     
-                    // Penalization starts 16 hours after waking up
-                    if (hoursSinceSleepEnd > 16) {
-                        const deprivationHours = Math.floor(hoursSinceSleepEnd - 16);
-                        // Softer penalty: -0.5 points per hour of deprivation
-                        const penalty = deprivationHours * 0.5; 
+                    const hoursSinceSleepStart = (now - lastSleepStart) / 3600000;
+                    
+                    if (hoursSinceSleepStart > 24) {
+                        const deprivationHours = Math.floor(hoursSinceSleepStart - 24);
+                        const penalty = deprivationHours * 0.5; // -0.5 points per hour of deprivation
                         return -penalty;
                     }
                     return 0;
@@ -593,6 +587,8 @@
     </script>
 </body>
 </html>
+
+
 
 
 
