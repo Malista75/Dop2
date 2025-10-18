@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v9.7 (Deuda de Sueño Lógica)</title>
+    <title>Simulador Neuroquímico v9.8 (Media Móvil)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -379,15 +379,11 @@
 
                     const lastSleep = sleepEvents[0];
                     const lastSleepStart = new Date(lastSleep.startTime).getTime();
-                    const lastSleepDurationHours = lastSleep.params.cantidad || 0;
-                    const lastSleepEnd = lastSleepStart + (lastSleepDurationHours * 3600000); 
+                    const hoursSinceSleepStart = (now - lastSleepStart) / 3600000;
 
-                    const hoursSinceWaking = (now - lastSleepEnd) / 3600000;
-                    
-                    const awakeThreshold = 18; // Penalization starts after 18 hours awake
-                    if (hoursSinceWaking > awakeThreshold) {
-                        const deprivationHours = Math.floor(hoursSinceWaking - awakeThreshold);
-                        const penalty = deprivationHours * 0.5; // -0.5 points per hour
+                    if (hoursSinceSleepStart > 24) {
+                        const deprivationHours = Math.floor(hoursSinceSleepStart - 24);
+                        const penalty = deprivationHours * 1.5; 
                         return -penalty;
                     }
                     return 0;
@@ -509,7 +505,14 @@
                 initChart() {
                     const ctx = this.ui.chartCanvas.getContext('2d');
                     this.state.chart = new Chart(ctx, {
-                        type: 'line', data: { datasets: [{ label: 'Historial', data: [], borderColor: '#3b82f6', borderWidth: 3, pointRadius: 0, tension: 0.4 }, { label: 'Previsión', data: [], borderColor: '#60a5fa', borderWidth: 2, pointRadius: 0, tension: 0.4, borderDash: [5, 5] }] },
+                        type: 'line', 
+                        data: { 
+                            datasets: [
+                                { label: 'Historial', data: [], borderColor: '#3b82f6', borderWidth: 3, pointRadius: 0, tension: 0.4 }, 
+                                { label: 'Previsión', data: [], borderColor: '#60a5fa', borderWidth: 2, pointRadius: 0, tension: 0.4, borderDash: [5, 5] },
+                                { label: 'Media Móvil (4h)', data: [], borderColor: '#f97316', borderWidth: 2, pointRadius: 0, tension: 0.4, borderDash: [2, 2] }
+                            ] 
+                        },
                         options: { parsing: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'dd MMM' }, tooltipFormat: 'dd MMM, HH:mm' }, grid: { color: '#374151' }, ticks: { color: '#9ca3af', source: 'auto' } }, y: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' }, min: 0, max: 200 } }, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } } }
                     });
                 },
@@ -553,8 +556,8 @@
                         const oneDayForward = new Date(now);
                         oneDayForward.setDate(now.getDate() + 1);
                         const endDate = oneDayForward.getTime();
-                        const historicalPoints = [];
-                        const forecastPoints = [];
+                        
+                        const allPoints = [];
                         const interval = 15 * 60 * 1000; 
 
                         for (let time = startDate; time <= endDate; time += interval) {
@@ -563,19 +566,32 @@
                                 totalEffect += this.getEventEffect(event, factors, time).effect;
                             });
                             totalEffect += this.calculateSleepDebt(time);
-                            const pointValue = Math.round(baseLevel + totalEffect);
-                            const point = { x: time, y: pointValue };
-                            if (time <= now.getTime()) {
-                                historicalPoints.push(point);
-                            } else {
-                                if (forecastPoints.length === 0 && historicalPoints.length > 0) {
-                                    forecastPoints.push(historicalPoints[historicalPoints.length - 1]);
-                                }
-                                forecastPoints.push(point);
+                            allPoints.push({ x: time, y: Math.round(baseLevel + totalEffect) });
+                        }
+
+                        const historicalPoints = allPoints.filter(p => p.x <= now.getTime());
+                        const forecastPoints = allPoints.filter(p => p.x >= now.getTime());
+                        if (forecastPoints.length > 0 && historicalPoints.length > 0) {
+                            forecastPoints.unshift(historicalPoints[historicalPoints.length-1]);
+                        }
+
+                        // Calculate 24-hour moving average for historical points
+                        const movingAveragePoints = [];
+                        const maWindow = 24 * 60 * 60 * 1000; // 24 hours in ms
+                        for(let i = 0; i < historicalPoints.length; i++) {
+                            const currentPoint = historicalPoints[i];
+                            const windowStart = currentPoint.x - maWindow;
+                            const pointsInWindow = historicalPoints.filter(p => p.x >= windowStart && p.x <= currentPoint.x);
+                            if (pointsInWindow.length > 0) {
+                                const sum = pointsInWindow.reduce((acc, p) => acc + p.y, 0);
+                                movingAveragePoints.push({ x: currentPoint.x, y: sum / pointsInWindow.length });
                             }
                         }
+
                         this.state.chart.data.datasets[0].data = historicalPoints;
                         this.state.chart.data.datasets[1].data = forecastPoints;
+                        this.state.chart.data.datasets[2].data = movingAveragePoints;
+                        
                         this.state.chart.update('none'); 
                     } catch (t) {
                         console.error("Error updating chart:", t);
@@ -590,9 +606,6 @@
     </script>
 </body>
 </html>
-
-
-
 
 
 
