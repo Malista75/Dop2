@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v9.8 (Media Móvil)</title>
+    <title>Simulador Neuroquímico v10.0 (Correcciones Finales)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -126,6 +126,24 @@
             </div>
         </div>
 
+        <div id="api-key-modal" class="fixed inset-0 z-50 items-center justify-center p-4 hidden modal-backdrop bg-black bg-opacity-75">
+            <div class="bg-base-200 rounded-2xl shadow-2xl p-8 w-full max-w-md modal-content transform scale-95">
+                <h2 class="text-3xl font-bold text-white mb-2">API Key de Gemini</h2>
+                <p class="text-gray-400 mb-6">Para usar el análisis con IA, necesitas una API Key de Google AI Studio. Es gratis.</p>
+                <form id="api-key-form">
+                    <div class="mb-4">
+                        <label for="api-key-input" class="block text-gray-300 mb-2 font-semibold">Tu API Key</label>
+                        <input type="password" id="api-key-input" class="w-full bg-base-300 border border-gray-600 rounded-lg px-4 py-3 text-white" required>
+                    </div>
+                     <p class="text-xs text-gray-500 mb-4">La clave se guardará únicamente en tu navegador. <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-accent hover:underline">Obtén una aquí.</a></p>
+                    <div class="flex gap-4">
+                         <button type="button" id="cancel-api-key-btn" class="w-full bg-base-300 hover:bg-gray-600 text-gray-300 font-bold py-3">Cancelar</button>
+                        <button type="submit" class="w-full bg-accent hover:bg-blue-500 text-white font-bold py-3">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div id="main-app" class="hidden">
             <header class="flex justify-between items-start mb-6">
                 <div>
@@ -206,7 +224,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const App = {
-                state: { userProfile: null, events: [], currentIndex: 100, currentEventType: null, chart: null, userId: null },
+                state: { userProfile: null, events: [], currentIndex: 100, currentEventType: null, chart: null, userId: null, apiKeyPromise: null },
                 ui: {},
                 
                 init() {
@@ -226,6 +244,10 @@
                         geminiResponse: document.getElementById('gemini-response'),
                         closeGeminiBtn: document.getElementById('close-gemini-btn'),
                         userIdDisplay: document.getElementById('user-id-display'),
+                        apiKeyModal: document.getElementById('api-key-modal'),
+                        apiKeyForm: document.getElementById('api-key-form'),
+                        apiKeyInput: document.getElementById('api-key-input'),
+                        cancelApiKeyBtn: document.getElementById('cancel-api-key-btn'),
                     };
                     
                     document.querySelectorAll('.event-btn').forEach(btn => {
@@ -379,11 +401,15 @@
 
                     const lastSleep = sleepEvents[0];
                     const lastSleepStart = new Date(lastSleep.startTime).getTime();
-                    const hoursSinceSleepStart = (now - lastSleepStart) / 3600000;
+                    const lastSleepDurationHours = lastSleep.params.cantidad || 0;
+                    const lastSleepEnd = lastSleepStart + (lastSleepDurationHours * 3600000); 
 
-                    if (hoursSinceSleepStart > 24) {
-                        const deprivationHours = Math.floor(hoursSinceSleepStart - 24);
-                        const penalty = deprivationHours * 1.5; 
+                    const hoursSinceWaking = (now - lastSleepEnd) / 3600000;
+                    
+                    const awakeThreshold = 18;
+                    if (hoursSinceWaking > awakeThreshold) {
+                        const deprivationHours = Math.floor(hoursSinceWaking - awakeThreshold);
+                        const penalty = deprivationHours * 0.5;
                         return -penalty;
                     }
                     return 0;
@@ -465,27 +491,73 @@
                     }
                 },
 
+                getApiKey() {
+                    return new Promise((resolve) => {
+                        const savedKey = localStorage.getItem('geminiApiKey_v9');
+                        if (savedKey) {
+                            resolve(savedKey);
+                            return;
+                        }
+                        
+                        this.ui.apiKeyModal.classList.add('flex');
+                        this.ui.apiKeyModal.classList.remove('hidden');
+
+                        const handleSubmit = (e) => {
+                            e.preventDefault();
+                            const apiKey = this.ui.apiKeyInput.value;
+                            if (apiKey) {
+                                localStorage.setItem('geminiApiKey_v9', apiKey);
+                                cleanup();
+                                resolve(apiKey);
+                            }
+                        };
+
+                        const handleCancel = () => {
+                            cleanup();
+                            resolve(null);
+                        };
+
+                        const cleanup = () => {
+                            this.ui.apiKeyModal.classList.add('hidden');
+                            this.ui.apiKeyModal.classList.remove('flex');
+                            this.ui.apiKeyForm.removeEventListener('submit', handleSubmit);
+                            this.ui.cancelApiKeyBtn.removeEventListener('click', handleCancel);
+                        };
+
+                        this.ui.apiKeyForm.addEventListener('submit', handleSubmit);
+                        this.ui.cancelApiKeyBtn.addEventListener('click', handleCancel);
+                    });
+                },
+
                 async handleGeminiAnalysis() {
                     this.ui.geminiModal.classList.add("flex");
                     this.ui.geminiModal.classList.remove("hidden");
                     this.ui.geminiResponse.classList.add("hidden");
                     this.ui.geminiLoading.classList.remove("hidden");
+                    
                     const response = await this.callGeminiAPI();
+
                     this.ui.geminiLoading.classList.add("hidden");
                     this.ui.geminiResponse.classList.remove("hidden");
                     this.ui.geminiResponse.textContent = response;
                 },
 
                 async callGeminiAPI() {
+                    const apiKey = await this.getApiKey();
+                    if (!apiKey) {
+                        return "Análisis cancelado. Se necesita una API Key de Gemini para continuar.";
+                    }
+
                     const systemPrompt = "Eres un asistente experto en neuroquímica y bienestar. Tu tono es informativo, científico pero accesible y empático. No eres un médico, sino un intérprete de un modelo teórico. Explicas el estado actual y el impacto a largo plazo en la línea base.";
                     const now = Date.now();
                     const factors = this.calculateFactors();
                     const activeEvents = this.state.events.filter(event => !this.getEventEffect(event, factors, now).finished);
                     let eventsSummary = activeEvents.length > 0 ? activeEvents.map(event => `- Evento: ${event.type}, iniciado hace ${((now - new Date(event.startTime).getTime()) / 3600000).toFixed(1)} horas.`).join('\n') : "No hay eventos activos.";
                     const userQuery = `Mi perfil fisiológico es: Sexo ${this.state.userProfile.sexo}, Peso ${this.state.userProfile.peso} kg. Mi estado actual es: - Neuro-Índice Actual: ${this.state.currentIndex} - Línea Base Dinámica: ${this.state.userProfile.dynamicBaseLevel.toFixed(2)}. Contexto importante: La Línea Base (homeostasis) ideal es 100. Mi línea base actual se ha ajustado por hábitos a largo plazo. El Índice Actual es la suma de la Línea Base y los efectos temporales de los eventos. Un Índice de ${this.state.currentIndex} sobre una base de ${this.state.userProfile.dynamicBaseLevel.toFixed(2)} significa un estado temporal de ${ (this.state.currentIndex - this.state.userProfile.dynamicBaseLevel).toFixed(0) } puntos. Eventos activos que influyen en el índice: ${eventsSummary}. Basado en estos datos, proporciona un análisis en dos párrafos: 1. **Análisis del Momento:** Explica mi estado actual (el Neuro-Índice de ${this.state.currentIndex}) como resultado de los eventos activos y su efecto sobre mi línea base. 2. **Análisis a Largo Plazo:** Comenta sobre mi Línea Base de ${this.state.userProfile.dynamicBaseLevel.toFixed(2)}. Explica si está por debajo de 100, por qué podría ser, y da una sugerencia práctica y específica para ayudar a recuperarla hacia 100. No uses markdown.`;
-                    const apiKey = "";
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                    
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
                     const payload = { contents: [{ parts: [{ text: userQuery }] }], systemInstruction: { parts: [{ text: systemPrompt }] }, };
+                    
                     try {
                         let response;
                         for (let i = 0; i < 5; i++) {
@@ -493,12 +565,12 @@
                             if (response.ok) break;
                             await new Promise(resolve => setTimeout(resolve, 2**i * 1000));
                         }
-                        if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+                        if (!response.ok) throw new Error(`API request failed: ${response.status}`);
                         const result = await response.json();
                         return result.candidates?.[0]?.content?.parts?.[0]?.text || "No se pudo obtener una respuesta de la IA.";
                     } catch (error) {
                         console.error("Error calling Gemini API:", error);
-                        return "Error al conectar con el servicio de IA.";
+                        return "Error al conectar con el servicio de IA. Verifica tu API Key o inténtalo más tarde.";
                     }
                 },
                 
@@ -510,7 +582,7 @@
                             datasets: [
                                 { label: 'Historial', data: [], borderColor: '#3b82f6', borderWidth: 3, pointRadius: 0, tension: 0.4 }, 
                                 { label: 'Previsión', data: [], borderColor: '#60a5fa', borderWidth: 2, pointRadius: 0, tension: 0.4, borderDash: [5, 5] },
-                                { label: 'Media Móvil (4h)', data: [], borderColor: '#f97316', borderWidth: 2, pointRadius: 0, tension: 0.4, borderDash: [2, 2] }
+                                { label: 'Media Móvil (24h)', data: [], borderColor: '#f97316', borderWidth: 2, pointRadius: 0, tension: 0.4, borderDash: [2, 2] }
                             ] 
                         },
                         options: { parsing: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'dd MMM' }, tooltipFormat: 'dd MMM, HH:mm' }, grid: { color: '#374151' }, ticks: { color: '#9ca3af', source: 'auto' } }, y: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' }, min: 0, max: 200 } }, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } } }
@@ -577,7 +649,7 @@
 
                         // Calculate 24-hour moving average for historical points
                         const movingAveragePoints = [];
-                        const maWindow = 24 * 60 * 60 * 1000; // 24 hours in ms
+                        const maWindow = 24 * 60 * 60 * 1000;
                         for(let i = 0; i < historicalPoints.length; i++) {
                             const currentPoint = historicalPoints[i];
                             const windowStart = currentPoint.x - maWindow;
@@ -606,8 +678,5 @@
     </script>
 </body>
 </html>
-
-
-
 
 
