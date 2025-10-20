@@ -1,9 +1,9 @@
-
+<!DOCTYPE html>
 <html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v10.2 (Motor Lógico)</title>
+    <title>Simulador Neuroquímico v10.3 (Modelo Flexible)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -349,9 +349,9 @@
                     const newEvent = { id: Date.now(), type, params, startTime: startTime.toISOString() };
                     
                     const budgets = {
-                        alcohol: { limit: 3, penalty: 0.08, types: ['alcohol'] },
-                        sexual: { limit: 4, penalty: 0.1, types: ['porno', 'masturbacion', 'orgasmo'] },
-                        azucar: { limit: 5, penalty: 0.03, types: ['azucar']}
+                        alcohol: { limit: 6, penalty: 0.08, types: ['alcohol'] },
+                        sexual: { limit: 0, penalty: 0.1, types: ['porno', 'masturbacion'] },
+                        azucar: { limit: 6, penalty: 0.03, types: ['azucar']}
                     };
 
                     let budgetCategory = null;
@@ -380,21 +380,21 @@
                     if (!this.state.userProfile) return;
 
                     const budgets = {
-                        alcohol: { limit: 3, types: ['alcohol'] },
-                        sexual: { limit: 4, types: ['porno', 'masturbacion', 'orgasmo'] },
-                        azucar: { limit: 5, types: ['azucar']}
+                        alcohol: { limit: 6, types: ['alcohol'] },
+                        sexual: { limit: 0, types: ['porno', 'masturbacion'] },
+                        azucar: { limit: 6, types: ['azucar']}
                     };
                     
-                    let isAbstaining = true;
+                    let hasExceededBudget = false;
                     for (const category in budgets) {
                         const count = this.getEventCountInWindow(budgets[category].types, 7 * 24);
-                        if (count > 0) {
-                            isAbstaining = false;
+                        if (count > budgets[category].limit) {
+                            hasExceededBudget = true;
                             break;
                         }
                     }
 
-                    if (isAbstaining && this.state.userProfile.dynamicBaseLevel < 100) {
+                    if (!hasExceededBudget && this.state.userProfile.dynamicBaseLevel < 100) {
                         const lastRecoveryTime = this.state.userProfile.lastRecoveryTimestamp ? new Date(this.state.userProfile.lastRecoveryTimestamp).getTime() : 0;
                         const now = Date.now();
                         const hoursSinceLastRecovery = (now - lastRecoveryTime) / 3600000;
@@ -496,13 +496,13 @@
                     }
 
                     const alcoholCount = this.getEventCountInWindow(['alcohol'], 7 * 24);
-                    const sexualCount = this.getEventCountInWindow(['porno', 'masturbacion', 'orgasmo'], 7 * 24);
+                    const sexualCount = this.getEventCountInWindow(['porno', 'masturbacion'], 7 * 24);
                     const azucarCount = this.getEventCountInWindow(['azucar'], 7 * 24);
 
                     this.ui.weeklyBudgetTracker.innerHTML = `
-                        <p>Alcohol (7 días): <span class="font-bold ${alcoholCount > 3 ? 'text-red-400' : 'text-green-400'}">${alcoholCount} / 3</span></p>
-                        <p>Act. Sexual (7 días): <span class="font-bold ${sexualCount > 4 ? 'text-red-400' : 'text-green-400'}">${sexualCount} / 4</span></p>
-                        <p>Azúcar (7 días): <span class="font-bold ${azucarCount > 5 ? 'text-red-400' : 'text-green-400'}">${azucarCount} / 5</span></p>
+                        <p>Alcohol (7 días): <span class="font-bold ${alcoholCount > 6 ? 'text-red-400' : 'text-green-400'}">${alcoholCount} / 6</span></p>
+                        <p>Porno/Masturb. (7 días): <span class="font-bold ${sexualCount > 0 ? 'text-red-400' : 'text-green-400'}">${sexualCount} / 0</span></p>
+                        <p>Azúcar (7 días): <span class="font-bold ${azucarCount > 6 ? 'text-red-400' : 'text-green-400'}">${azucarCount} / 6</span></p>
                     `;
 
 
@@ -736,7 +736,6 @@
     </script>
 </body>
 </html>
-
 
 
 
