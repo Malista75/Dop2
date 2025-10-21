@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v10.3 (Modelo Flexible)</title>
+    <title>Simulador Neuroquímico v10.4 (Lógica Corregida)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -348,6 +348,14 @@
                 addEvent(type, params = {}, startTime = new Date()) {
                     const newEvent = { id: Date.now(), type, params, startTime: startTime.toISOString() };
                     
+                    if (type === 'sueño') {
+                        // Sleep quality now directly affects the baseline
+                        const qualityMap = { 1.5: 0.1, 1.0: 0, 0.5: -0.1 }; // Good, Regular, Bad
+                        const qualityFactor = qualityMap[params.intensidad] || 0;
+                        this.state.userProfile.dynamicBaseLevel += qualityFactor;
+                        this.state.userProfile.dynamicBaseLevel = Math.min(this.state.userProfile.dynamicBaseLevel, 100); // Cap at 100
+                    }
+
                     const budgets = {
                         alcohol: { limit: 6, penalty: 0.08, types: ['alcohol'] },
                         sexual: { limit: 0, penalty: 0.1, types: ['porno', 'masturbacion'] },
@@ -364,7 +372,7 @@
 
                     if (budgetCategory) {
                         const categoryInfo = budgets[budgetCategory];
-                        const count = this.getEventCountInWindow(categoryInfo.types, 7 * 24) + 1; // +1 for the current event
+                        const count = this.getEventCountInWindow(categoryInfo.types, 7 * 24) + 1;
                         if (count > categoryInfo.limit) {
                             this.state.userProfile.dynamicBaseLevel -= categoryInfo.penalty;
                         }
@@ -377,24 +385,13 @@
                 },
 
                 checkAndApplyRecovery() {
-                    if (!this.state.userProfile) return;
+                    if (!this.state.userProfile || this.state.userProfile.dynamicBaseLevel >= 100) return;
 
-                    const budgets = {
-                        alcohol: { limit: 6, types: ['alcohol'] },
-                        sexual: { limit: 0, types: ['porno', 'masturbacion'] },
-                        azucar: { limit: 6, types: ['azucar']}
-                    };
+                    // Simplified recovery: if no penalizing events in the last 7 days, start recovering.
+                    const penalizingTypes = ['alcohol', 'porno', 'masturbacion', 'azucar'];
+                    const penalizingEventsCount = this.getEventCountInWindow(penalizingTypes, 7 * 24);
                     
-                    let hasExceededBudget = false;
-                    for (const category in budgets) {
-                        const count = this.getEventCountInWindow(budgets[category].types, 7 * 24);
-                        if (count > budgets[category].limit) {
-                            hasExceededBudget = true;
-                            break;
-                        }
-                    }
-
-                    if (!hasExceededBudget && this.state.userProfile.dynamicBaseLevel < 100) {
+                    if (penalizingEventsCount === 0) {
                         const lastRecoveryTime = this.state.userProfile.lastRecoveryTimestamp ? new Date(this.state.userProfile.lastRecoveryTimestamp).getTime() : 0;
                         const now = Date.now();
                         const hoursSinceLastRecovery = (now - lastRecoveryTime) / 3600000;
@@ -498,13 +495,15 @@
                     const alcoholCount = this.getEventCountInWindow(['alcohol'], 7 * 24);
                     const sexualCount = this.getEventCountInWindow(['porno', 'masturbacion'], 7 * 24);
                     const azucarCount = this.getEventCountInWindow(['azucar'], 7 * 24);
+                    const debt = 100 - this.state.userProfile.dynamicBaseLevel;
+                    const daysToRecover = debt > 0 ? Math.ceil(debt / 0.2) : 0;
 
                     this.ui.weeklyBudgetTracker.innerHTML = `
                         <p>Alcohol (7 días): <span class="font-bold ${alcoholCount > 6 ? 'text-red-400' : 'text-green-400'}">${alcoholCount} / 6</span></p>
                         <p>Porno/Masturb. (7 días): <span class="font-bold ${sexualCount > 0 ? 'text-red-400' : 'text-green-400'}">${sexualCount} / 0</span></p>
                         <p>Azúcar (7 días): <span class="font-bold ${azucarCount > 6 ? 'text-red-400' : 'text-green-400'}">${azucarCount} / 6</span></p>
+                        ${daysToRecover > 0 ? `<p class="mt-2 text-sm text-gray-400">Días estimados para recuperar base a 100 (con abstinencia): <span class="font-bold text-accent">${daysToRecover}</span></p>` : ''}
                     `;
-
 
                     const base = this.state.userProfile.dynamicBaseLevel;
                     if (this.state.currentIndex > base + 15) this.ui.currentIndexDisplay.style.color = '#22c55e';
@@ -659,7 +658,7 @@
                     if (minutesElapsed < 0) return { effect: 0, finished: false };
                     let effectValue = 0;
                     let isFinished = false;
-                    const formulas = { alcohol: { duration: 360, apply: p => { const q = p.cantidad || 1, u = 8 * q * factors.factorSexoAlcohol * factors.factorPeso, d = -16 * q * factors.factorSexoAlcohol * factors.factorPeso; if (minutesElapsed < 60) return minutesElapsed / 60 * u; if (minutesElapsed < 180) return u + (minutesElapsed - 60) / 120 * (d - u); if (minutesElapsed < 360) return d * (1 - (minutesElapsed - 180) / 180); return 0; } }, modafinilo: { duration: 1020, apply: p => { const d = (p.cantidad || 100) / 100, pk = 35 * d * factors.factorPeso, pD = 660 * factors.factorSexoModafiniloDuracionMultiplier; if (minutesElapsed < 120) return minutesElapsed / 120 * pk; if (minutesElapsed < 120 + pD) return pk; if (minutesElapsed < 120 + pD + 240) return pk * (1 - (minutesElapsed - 120 - pD) / 240); return 0; } }, ejercicio: { duration: p => (p.cantidad || 30) + 120, apply: p => { const d = p.cantidad || 30, i = p.intensidad || 1, pk = 10 * i * factors.factorPeso, pD = Math.max(0, d - 15); if (minutesElapsed < 15) return minutesElapsed / 15 * pk; if (minutesElapsed < 15 + pD) return pk; if (minutesElapsed < 15 + pD + 120) return pk * (1 - (minutesElapsed - 15 - pD) / 120); return 0; } }, porno: { duration: p => (p.cantidad || 15) + 90, apply: p => { const d = p.cantidad || 15, u = 5 + d / 10, dn = -10; if (minutesElapsed < d) return minutesElapsed / d * u; if (minutesElapsed < d + 20) return u + (minutesElapsed - d) / 20 * (dn - u); if (minutesElapsed < d + 90) return dn * (1 - (minutesElapsed - d - 20) / 70); return 0; } }, cafeina: { duration: 240, apply: p => { const q = p.cantidad || 1, u = 20 * q, d = -5 * q; if (minutesElapsed < 30) return minutesElapsed / 30 * u; if (minutesElapsed < 90) return u + (minutesElapsed - 30) / 60 * (d - u); if (minutesElapsed < 240) return d * (1 - (minutesElapsed - 90) / 150); return 0; } }, te: { duration: 300, apply: p => { const q = p.cantidad || 1, u = 12 * q, d = -2 * q; if (minutesElapsed < 45) return minutesElapsed / 45 * u; if (minutesElapsed < 120) return u + (minutesElapsed - 45) / 75 * (d - u); if (minutesElapsed < 300) return d * (1 - (minutesElapsed - 120) / 180); return 0; } }, azucar: { duration: 120, apply: p => { const i = p.intensidad || 1, u = 25 * i, d = -15 * i; if (minutesElapsed < 15) return minutesElapsed / 15 * u; if (minutesElapsed < 45) return u + (minutesElapsed - 15) / 30 * (d - u); if (minutesElapsed < 120) return d * (1 - (minutesElapsed - 45) / 75); return 0; } }, sensacion: { duration: 60, apply: p => { const v = p.cantidad, pk = (v - 5) * 2.5; return minutesElapsed < 60 ? pk * (1 - minutesElapsed / 60) : 0; } }, sueño: { duration: 1440, apply: p => { const b = (p.cantidad - 4) * 2, t = b * (p.intensidad || 1); return minutesElapsed < 1440 ? t * (1 - minutesElapsed / 1440) : 0; } }, hrv: { duration: 180, apply: p => { const e = (p.cantidad - 55) * 0.3; return minutesElapsed < 180 ? e * (1 - minutesElapsed / 180) : 0; } }, masturbacion: { duration: p => (p.cantidad || 10) + 50, apply: p => { const d = p.cantidad || 10, u = 15, dn = -5; if (minutesElapsed < d) return minutesElapsed / d * u; if (minutesElapsed < d + 50) return u + (minutesElapsed - d) / 50 * (dn - u); return 0; } }, orgasmo: { duration: 150, apply: () => { const u = 40, d = -20; if (minutesElapsed < 3) return u; if (minutesElapsed < 15) return d; if (minutesElapsed < 150) return d * (1 - (minutesElapsed - 15) / 135); return 0; } } };
+                    const formulas = { alcohol: { duration: 360, apply: p => { const q = p.cantidad || 1, u = 8 * q * factors.factorSexoAlcohol * factors.factorPeso, d = -16 * q * factors.factorSexoAlcohol * factors.factorPeso; if (minutesElapsed < 60) return minutesElapsed / 60 * u; if (minutesElapsed < 180) return u + (minutesElapsed - 60) / 120 * (d - u); if (minutesElapsed < 360) return d * (1 - (minutesElapsed - 180) / 180); return 0; } }, modafinilo: { duration: 1020, apply: p => { const d = (p.cantidad || 100) / 100, pk = 35 * d * factors.factorPeso, pD = 660 * factors.factorSexoModafiniloDuracionMultiplier; if (minutesElapsed < 120) return minutesElapsed / 120 * pk; if (minutesElapsed < 120 + pD) return pk; if (minutesElapsed < 120 + pD + 240) return pk * (1 - (minutesElapsed - 120 - pD) / 240); return 0; } }, ejercicio: { duration: p => (p.cantidad || 30) + 120, apply: p => { const d = p.cantidad || 30, i = p.intensidad || 1, pk = 10 * i * factors.factorPeso, pD = Math.max(0, d - 15); if (minutesElapsed < 15) return minutesElapsed / 15 * pk; if (minutesElapsed < 15 + pD) return pk; if (minutesElapsed < 15 + pD + 120) return pk * (1 - (minutesElapsed - 15 - pD) / 120); return 0; } }, porno: { duration: p => (p.cantidad || 15) + 90, apply: p => { const d = p.cantidad || 15, u = 5 + d / 10, dn = -10; if (minutesElapsed < d) return minutesElapsed / d * u; if (minutesElapsed < d + 20) return u + (minutesElapsed - d) / 20 * (dn - u); if (minutesElapsed < d + 90) return dn * (1 - (minutesElapsed - d - 20) / 70); return 0; } }, cafeina: { duration: 240, apply: p => { const q = p.cantidad || 1, u = 20 * q, d = -5 * q; if (minutesElapsed < 30) return minutesElapsed / 30 * u; if (minutesElapsed < 90) return u + (minutesElapsed - 30) / 60 * (d - u); if (minutesElapsed < 240) return d * (1 - (minutesElapsed - 90) / 150); return 0; } }, te: { duration: 300, apply: p => { const q = p.cantidad || 1, u = 12 * q, d = -2 * q; if (minutesElapsed < 45) return minutesElapsed / 45 * u; if (minutesElapsed < 120) return u + (minutesElapsed - 45) / 75 * (d - u); if (minutesElapsed < 300) return d * (1 - (minutesElapsed - 120) / 180); return 0; } }, azucar: { duration: 120, apply: p => { const i = p.intensidad || 1, u = 25 * i, d = -15 * i; if (minutesElapsed < 15) return minutesElapsed / 15 * u; if (minutesElapsed < 45) return u + (minutesElapsed - 15) / 30 * (d - u); if (minutesElapsed < 120) return d * (1 - (minutesElapsed - 45) / 75); return 0; } }, sensacion: { duration: 60, apply: p => { const v = p.cantidad, pk = (v - 5) * 2.5; return minutesElapsed < 60 ? pk * (1 - minutesElapsed / 60) : 0; } }, sueño: { duration: 0, apply: p => 0 }, hrv: { duration: 180, apply: p => { const e = (p.cantidad - 55) * 0.3; return minutesElapsed < 180 ? e * (1 - minutesElapsed / 180) : 0; } }, masturbacion: { duration: p => (p.cantidad || 10) + 50, apply: p => { const d = p.cantidad || 10, u = 15, dn = -5; if (minutesElapsed < d) return minutesElapsed / d * u; if (minutesElapsed < d + 50) return u + (minutesElapsed - d) / 50 * (dn - u); return 0; } }, orgasmo: { duration: 150, apply: () => { const u = 40, d = -20; if (minutesElapsed < 3) return u; if (minutesElapsed < 15) return d; if (minutesElapsed < 150) return d * (1 - (minutesElapsed - 15) / 135); return 0; } } };
                     const formula = formulas[event.type];
                     if (formula) {
                         const totalDuration = typeof formula.duration === 'function' ? formula.duration(event.params) : formula.duration;
@@ -736,6 +735,7 @@
     </script>
 </body>
 </html>
+
 
 
 
