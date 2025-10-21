@@ -387,7 +387,6 @@
                 checkAndApplyRecovery() {
                     if (!this.state.userProfile || this.state.userProfile.dynamicBaseLevel >= 100) return;
 
-                    // Simplified recovery: if no penalizing events in the last 7 days, start recovering.
                     const penalizingTypes = ['alcohol', 'porno', 'masturbacion', 'azucar'];
                     const penalizingEventsCount = this.getEventCountInWindow(penalizingTypes, 7 * 24);
                     
