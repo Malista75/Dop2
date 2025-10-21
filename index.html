@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v10.6 (IA Enfocada)</title>
+    <title>Simulador Neuroquímico v10.8 (UI Corregida)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -223,6 +223,25 @@
                 <h3 class="text-2xl font-bold text-white mb-4">Presupuesto Semanal</h3>
                 <div id="weekly-budget-tracker" class="space-y-2 text-gray-300"></div>
             </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div class="bg-base-200 p-6 rounded-2xl shadow-xl">
+                    <h3 class="text-2xl font-bold text-white mb-4">Estadísticas</h3>
+                    <div id="stats-container" class="space-y-2 text-gray-300">
+                        <p>Media Ayer: <span id="avg-yesterday" class="font-bold text-accent">--</span></p>
+                        <p>Media Últimos 7 Días: <span id="avg-week" class="font-bold text-accent">--</span></p>
+                        <p>Media Total: <span id="avg-total" class="font-bold text-accent">--</span></p>
+                    </div>
+                </div>
+                <div class="bg-base-200 p-6 rounded-2xl shadow-xl">
+                    <h3 class="text-2xl font-bold text-white mb-4">Días de Abstinencia</h3>
+                    <div id="abstinence-container" class="space-y-2 text-gray-300">
+                        <p>Alcohol: <span id="abstinence-alcohol" class="font-bold text-accent">--</span> días</p>
+                        <p>Porno/Masturb.: <span id="abstinence-sexual" class="font-bold text-accent">--</span> días</p>
+                        <p>Azúcar: <span id="abstinence-sugar" class="font-bold text-accent">--</span> días</p>
+                    </div>
+                </div>
+            </div>
 
         </div>
     </div>
@@ -235,14 +254,25 @@
                 
                 init() {
                     this.ui = {
-                        profileSetup: document.getElementById('profile-setup'), mainApp: document.getElementById('main-app'), profileForm: document.getElementById('profile-form'),
-                        sexoInput: document.getElementById('sexo'), pesoInput: document.getElementById('peso'), editProfileBtn: document.getElementById('edit-profile-btn'),
-                        currentIndexDisplay: document.getElementById('current-index'), baseLevelDisplay: document.getElementById('base-level-display'), chartCanvas: document.getElementById('neuro-chart'),
+                        profileSetup: document.getElementById('profile-setup'),
+                        mainApp: document.getElementById('main-app'),
+                        profileForm: document.getElementById('profile-form'),
+                        sexoInput: document.getElementById('sexo'),
+                        pesoInput: document.getElementById('peso'),
+                        editProfileBtn: document.getElementById('edit-profile-btn'),
+                        currentIndexDisplay: document.getElementById('current-index'),
+                        baseLevelDisplay: document.getElementById('base-level-display'),
+                        chartCanvas: document.getElementById('neuro-chart'),
                         sleepDebtIndicator: document.getElementById('sleep-debt-indicator'),
-                        activeEventsContainer: document.getElementById('active-events'), noEventsMsg: document.getElementById('no-events-msg'),
-                        eventModal: document.getElementById('event-modal'), eventModalTitle: document.getElementById('event-modal-title'), eventForm: document.getElementById('event-form'),
-                        eventInputsContainer: document.getElementById('event-inputs-container'), cancelEventBtn: document.getElementById('cancel-event-btn'),
-                        sensacionSlider: document.getElementById('sensacion-slider'), sensacionValue: document.getElementById('sensacion-value'),
+                        activeEventsContainer: document.getElementById('active-events'),
+                        noEventsMsg: document.getElementById('no-events-msg'),
+                        eventModal: document.getElementById('event-modal'),
+                        eventModalTitle: document.getElementById('event-modal-title'),
+                        eventForm: document.getElementById('event-form'),
+                        eventInputsContainer: document.getElementById('event-inputs-container'),
+                        cancelEventBtn: document.getElementById('cancel-event-btn'),
+                        sensacionSlider: document.getElementById('sensacion-slider'),
+                        sensacionValue: document.getElementById('sensacion-value'),
                         addSensacionBtn: document.getElementById('add-sensacion-btn'),
                         analyzeGeminiBtn: document.getElementById('analyze-gemini-btn'),
                         geminiModal: document.getElementById('gemini-modal'),
@@ -255,6 +285,14 @@
                         apiKeyInput: document.getElementById('api-key-input'),
                         cancelApiKeyBtn: document.getElementById('cancel-api-key-btn'),
                         weeklyBudgetTracker: document.getElementById('weekly-budget-tracker'),
+                        statsContainer: document.getElementById('stats-container'),
+                        abstinenceContainer: document.getElementById('abstinence-container'),
+                        avgYesterday: document.getElementById('avg-yesterday'),
+                        avgWeek: document.getElementById('avg-week'),
+                        avgTotal: document.getElementById('avg-total'),
+                        abstinenceAlcohol: document.getElementById('abstinence-alcohol'),
+                        abstinenceSexual: document.getElementById('abstinence-sexual'),
+                        abstinenceSugar: document.getElementById('abstinence-sugar'),
                     };
                     
                     document.querySelectorAll('.event-btn').forEach(btn => {
@@ -346,15 +384,18 @@
                 },
 
                 addEvent(type, params = {}, startTime = new Date()) {
-                    const newEvent = { id: Date.now(), type, params, startTime: startTime.toISOString() };
-                    
                     if (type === 'sueño') {
-                        const qualityMap = { 1.5: 0.1, 1.0: 0, 0.5: -0.1 };
+                        const qualityMap = { 1.5: 0.1, 1.0: 0.05, 0.5: -0.1 }; // Good, Regular, Bad
                         const qualityFactor = qualityMap[params.intensidad] || 0;
                         this.state.userProfile.dynamicBaseLevel += qualityFactor;
                         this.state.userProfile.dynamicBaseLevel = Math.min(this.state.userProfile.dynamicBaseLevel, 100);
+                        
+                        const sleepStartTime = startTime.getTime();
+                        this.state.events = this.state.events.filter(event => new Date(event.startTime).getTime() >= sleepStartTime);
                     }
-
+                    
+                    const newEvent = { id: Date.now(), type, params, startTime: startTime.toISOString() };
+                    
                     const budgets = {
                         alcohol: { limit: 6, penalty: 0.08, types: ['alcohol'] },
                         sexual: { limit: 0, penalty: 0.1, types: ['porno', 'masturbacion'] },
@@ -386,10 +427,22 @@
                 checkAndApplyRecovery() {
                     if (!this.state.userProfile || this.state.userProfile.dynamicBaseLevel >= 100) return;
 
-                    const penalizingTypes = ['alcohol', 'porno', 'masturbacion', 'azucar'];
-                    const penalizingEventsCount = this.getEventCountInWindow(penalizingTypes, 7 * 24);
+                    const budgets = {
+                        alcohol: { limit: 6, types: ['alcohol'] },
+                        sexual: { limit: 0, types: ['porno', 'masturbacion'] },
+                        azucar: { limit: 6, types: ['azucar']}
+                    };
                     
-                    if (penalizingEventsCount === 0) {
+                    let hasExceededBudget = false;
+                    for (const category in budgets) {
+                        const count = this.getEventCountInWindow(budgets[category].types, 7 * 24);
+                        if (count > budgets[category].limit) {
+                            hasExceededBudget = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!hasExceededBudget) {
                         const lastRecoveryTime = this.state.userProfile.lastRecoveryTimestamp ? new Date(this.state.userProfile.lastRecoveryTimestamp).getTime() : 0;
                         const now = Date.now();
                         const hoursSinceLastRecovery = (now - lastRecoveryTime) / 3600000;
@@ -456,6 +509,11 @@
                 update() {
                     try {
                         if (!this.state.userProfile) return;
+                        
+                        const allPoints = this.generateAllChartPoints();
+
+                        this.updateStatsAndAbstinence(allPoints);
+
                         const factors = this.calculateFactors();
                         let totalEffectNow = 0;
                         const now = Date.now();
@@ -471,11 +529,48 @@
                         const displayEvents = this.state.events.filter(event => !this.getEventEffect(event, factors, now).finished);
                         
                         this.state.currentIndex = Math.round(this.state.userProfile.dynamicBaseLevel + totalEffectNow);
+                        
                         this.updateUI(displayEvents, sleepDebt);
-                        this.updateChart();
+                        this.updateChart(allPoints);
                     } catch (error) {
                         console.error("Update cycle error:", error);
                     }
+                },
+
+                updateStatsAndAbstinence(allPoints) {
+                    const now = new Date();
+                    const yesterday = new Date(now);
+                    yesterday.setDate(now.getDate() - 1);
+                    const weekAgo = new Date(now);
+                    weekAgo.setDate(now.getDate() - 7);
+                    
+                    const yesterdayStart = new Date(yesterday).setHours(0,0,0,0);
+                    const yesterdayEnd = new Date(yesterday).setHours(23,59,59,999);
+
+                    const yesterdayPoints = allPoints.filter(p => p.x >= yesterdayStart && p.x <= yesterdayEnd);
+                    const weekPoints = allPoints.filter(p => p.x >= weekAgo.getTime());
+
+                    const avg = (points) => points.length > 0 ? (points.reduce((sum, p) => sum + p.y, 0) / points.length).toFixed(1) : '--';
+
+                    this.ui.avgYesterday.textContent = avg(yesterdayPoints);
+                    this.ui.avgWeek.textContent = avg(weekPoints);
+                    this.ui.avgTotal.textContent = avg(allPoints.filter(p => p.x <= now.getTime()));
+
+                    const lastEventDate = (types) => {
+                        const relevantEvents = this.state.events
+                            .filter(e => types.includes(e.type))
+                            .sort((a,b) => new Date(b.startTime) - new Date(a.startTime));
+                        return relevantEvents.length > 0 ? new Date(relevantEvents[0].startTime) : null;
+                    };
+
+                    const daysSince = (date) => {
+                        if (!date) return '∞';
+                        return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+                    };
+
+                    this.ui.abstinenceAlcohol.textContent = `${daysSince(lastEventDate(['alcohol']))} días`;
+                    this.ui.abstinenceSexual.textContent = `${daysSince(lastEventDate(['porno', 'masturbacion']))} días`;
+                    this.ui.abstinenceSugar.textContent = `${daysSince(lastEventDate(['azucar']))} días`;
                 },
 
                 updateUI(displayEvents, sleepDebt) {
@@ -670,32 +765,36 @@
                     return { effect: effectValue, finished: isFinished };
                 },
                 
-                updateChart() {
-                    if (!this.state.chart) return;
+                generateAllChartPoints() {
+                    const factors = this.calculateFactors();
+                    const baseLevel = this.state.userProfile.dynamicBaseLevel;
+                    const now = new Date();
+                    const twoDaysAgo = new Date(now);
+                    twoDaysAgo.setDate(now.getDate() - 2);
+                    twoDaysAgo.setHours(0, 0, 0, 0);
+                    const startDate = twoDaysAgo.getTime();
+                    const oneDayForward = new Date(now);
+                    oneDayForward.setDate(now.getDate() + 1);
+                    const endDate = oneDayForward.getTime();
+                    
+                    const allPoints = [];
+                    const interval = 15 * 60 * 1000; 
+
+                    for (let time = startDate; time <= endDate; time += interval) {
+                        let totalEffect = 0;
+                        this.state.events.forEach(event => {
+                            totalEffect += this.getEventEffect(event, factors, time).effect;
+                        });
+                        totalEffect += this.calculateSleepDebt(time);
+                        allPoints.push({ x: time, y: Math.round(baseLevel + totalEffect) });
+                    }
+                    return allPoints;
+                },
+
+                updateChart(allPoints) {
+                    if (!this.state.chart || !allPoints) return;
                     try {
-                        const factors = this.calculateFactors();
-                        const baseLevel = this.state.userProfile.dynamicBaseLevel;
                         const now = new Date();
-                        const twoDaysAgo = new Date(now);
-                        twoDaysAgo.setDate(now.getDate() - 2);
-                        twoDaysAgo.setHours(0, 0, 0, 0);
-                        const startDate = twoDaysAgo.getTime();
-                        const oneDayForward = new Date(now);
-                        oneDayForward.setDate(now.getDate() + 1);
-                        const endDate = oneDayForward.getTime();
-                        
-                        const allPoints = [];
-                        const interval = 15 * 60 * 1000; 
-
-                        for (let time = startDate; time <= endDate; time += interval) {
-                            let totalEffect = 0;
-                            this.state.events.forEach(event => {
-                                totalEffect += this.getEventEffect(event, factors, time).effect;
-                            });
-                            totalEffect += this.calculateSleepDebt(time);
-                            allPoints.push({ x: time, y: Math.round(baseLevel + totalEffect) });
-                        }
-
                         const historicalPoints = allPoints.filter(p => p.x <= now.getTime());
                         const forecastPoints = allPoints.filter(p => p.x >= now.getTime());
                         if (forecastPoints.length > 0 && historicalPoints.length > 0) {
@@ -733,7 +832,4 @@
     </script>
 </body>
 </html>
-
-
-
 
