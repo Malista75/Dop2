@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v10.4 (Lógica Corregida)</title>
+    <title>Simulador Neuroquímico v10.6 (IA Enfocada)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -349,11 +349,10 @@
                     const newEvent = { id: Date.now(), type, params, startTime: startTime.toISOString() };
                     
                     if (type === 'sueño') {
-                        // Sleep quality now directly affects the baseline
-                        const qualityMap = { 1.5: 0.1, 1.0: 0, 0.5: -0.1 }; // Good, Regular, Bad
+                        const qualityMap = { 1.5: 0.1, 1.0: 0, 0.5: -0.1 };
                         const qualityFactor = qualityMap[params.intensidad] || 0;
                         this.state.userProfile.dynamicBaseLevel += qualityFactor;
-                        this.state.userProfile.dynamicBaseLevel = Math.min(this.state.userProfile.dynamicBaseLevel, 100); // Cap at 100
+                        this.state.userProfile.dynamicBaseLevel = Math.min(this.state.userProfile.dynamicBaseLevel, 100);
                     }
 
                     const budgets = {
@@ -605,7 +604,7 @@
                     const factors = this.calculateFactors();
                     const activeEvents = this.state.events.filter(event => !this.getEventEffect(event, factors, now).finished);
                     let eventsSummary = activeEvents.length > 0 ? activeEvents.map(event => `- Evento: ${event.type}, iniciado hace ${((now - new Date(event.startTime).getTime()) / 3600000).toFixed(1)} horas.`).join('\n') : "No hay eventos activos.";
-                    const userQuery = `Mi perfil fisiológico es: Sexo ${this.state.userProfile.sexo}, Peso ${this.state.userProfile.peso} kg. Mi estado actual es: - Neuro-Índice Actual: ${this.state.currentIndex} - Línea Base Dinámica: ${this.state.userProfile.dynamicBaseLevel.toFixed(2)}. Contexto importante: La Línea Base (homeostasis) ideal es 100. Mi línea base actual se ha ajustado por hábitos a largo plazo. El Índice Actual es la suma de la Línea Base y los efectos temporales de los eventos. Un Índice de ${this.state.currentIndex} sobre una base de ${this.state.userProfile.dynamicBaseLevel.toFixed(2)} significa un estado temporal de ${ (this.state.currentIndex - this.state.userProfile.dynamicBaseLevel).toFixed(0) } puntos. Eventos activos que influyen en el índice: ${eventsSummary}. Basado en estos datos, proporciona un análisis en dos párrafos: 1. **Análisis del Momento:** Explica mi estado actual (el Neuro-Índice de ${this.state.currentIndex}) como resultado de los eventos activos y su efecto sobre mi línea base. 2. **Análisis a Largo Plazo:** Comenta sobre mi Línea Base de ${this.state.userProfile.dynamicBaseLevel.toFixed(2)}. Explica si está por debajo de 100, por qué podría ser, y da una sugerencia práctica y específica para ayudar a recuperarla hacia 100. No uses markdown.`;
+                    const userQuery = `Mi perfil fisiológico es: Sexo ${this.state.userProfile.sexo}, Peso ${this.state.userProfile.peso} kg. Mi estado actual es: - Neuro-Índice Actual: ${this.state.currentIndex} - Línea Base Dinámica: ${this.state.userProfile.dynamicBaseLevel.toFixed(2)}. Contexto importante: La Línea Base (homeostasis) ideal es 100. Mi línea base actual se ha ajustado por hábitos a largo plazo. El Índice Actual es la suma de la Línea Base y los efectos temporales de los eventos. Un Índice de ${this.state.currentIndex} sobre una base de ${this.state.userProfile.dynamicBaseLevel.toFixed(2)} significa un estado temporal de ${ (this.state.currentIndex - this.state.userProfile.dynamicBaseLevel).toFixed(0) } puntos. Eventos activos que influyen en el índice: ${eventsSummary}. Basado en estos datos, proporciona un análisis en dos párrafos: 1. **Análisis del Momento:** Explica mi estado actual (el Neuro-Índice de ${this.state.currentIndex}) como resultado de los eventos activos y su efecto sobre mi línea base. 2. **Análisis a Largo Plazo:** Comenta sobre mi Línea Base de ${this.state.userProfile.dynamicBaseLevel.toFixed(2)}. Explica si está por debajo de 100, por qué podría ser, y da una sugerencia práctica y específica para ayudar a recuperarla hacia 100. Tu sugerencia para recuperarla DEBE centrarse exclusivamente en la gestión de los eventos que, según el modelo, penalizan la línea base (alcohol, porno, masturbación, azúcar) dentro de sus presupuestos semanales, y en la calidad del sueño. No des consejos genéricos como tomar el sol o meditar. Sé directo y enfócate en las reglas del modelo. No uses markdown.`;
                     
                     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
                     const payload = { contents: [{ parts: [{ text: userQuery }] }], systemInstruction: { parts: [{ text: systemPrompt }] }, };
