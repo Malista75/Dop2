@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v11.0 (Firebase)</title>
+    <title>Simulador Neuroquímico v11.1 (Arranque Corregido)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -249,7 +249,7 @@
     <script type="module">
         // Importaciones de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, addDoc, collection, onSnapshot, query, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -262,8 +262,8 @@
                     chart: null, 
                     userId: null, 
                     apiKeyPromise: null,
-                    firebase: {}, // Almacenará instancias de Firebase
-                    appId: 'default-app-id' // ID de la app
+                    firebase: {}, 
+                    appId: 'neuro-indice-app' // ID de app fijo
                 },
                 ui: {},
                 
@@ -320,12 +320,9 @@
                 
                 async initFirebase() {
                     try {
-                        this.state.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                         
-                        // ⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️
                         // ======================================================================
-                        // ! IMPORTANTE: PEGA TU CONFIGURACIÓN DE FIREBASE (PASO 3 DE LA GUÍA) AQUÍ
-                        // Reemplaza 'null' con el bloque const firebaseConfig = { ... };
+                        // ! TU CONFIGURACIÓN DE FIREBASE (¡YA ESTÁ PEGADA!)
                         // ======================================================================
                         
                         const firebaseConfig = {
@@ -338,59 +335,51 @@
                           measurementId: "G-YF7S907YT4"
                         };
                         
-                        // Initialize Firebase
-                        const app = initializeApp(firebaseConfig);
-                        const analytics = getAnalytics(app);
-
                         // ⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️
                         
-
-                        if (!firebaseConfig) {
-                            if (typeof __firebase_config !== 'undefined') {
-                                // Fallback para el entorno de desarrollo (si existe)
-                                const fbConfig = JSON.parse(__firebase_config);
-                                const app = initializeApp(fbConfig);
-                                this.state.firebase = { app, auth: getAuth(app), db: getFirestore(app) };
-                            } else {
-                                console.error("Firebase config not found.");
-                                document.body.innerHTML = '<div class="text-white text-center p-8">Error de configuración: No se pudo conectar a la base de datos. Pega tu `firebaseConfig` en el archivo index.html.</div>';
-                                return;
-                            }
-                        } else {
-                             const app = initializeApp(firebaseConfig);
-                             this.state.firebase = { app, auth: getAuth(app), db: getFirestore(app) };
+                        if (!firebaseConfig || firebaseConfig.apiKey === "TU_API_KEY") {
+                             document.body.innerHTML = '<div class="text-white text-center p-8">Error de configuración: No se pudo conectar a la base de datos. Pega tu `firebaseConfig` en el archivo index.html (línea 900 aprox).</div>';
+                            return;
                         }
-                        
-                        const auth = this.state.firebase.auth;
 
+                        const app = initializeApp(firebaseConfig);
+                        const auth = getAuth(app);
+                        const db = getFirestore(app);
+                        this.state.firebase = { app, auth, db };
+
+                        // Manejador de estado de autenticación
                         onAuthStateChanged(auth, async (user) => {
                             if (user) {
+                                // Usuario está logueado
                                 this.state.userId = user.uid;
                                 this.ui.userIdDisplay.textContent = `ID Sesión: ${user.uid.substring(0, 8)}...`;
-                                await this.loadProfile();
+                                await this.loadProfile(); // Carga el perfil
                                 if (this.state.userProfile) {
-                                    this.startApp();
+                                    this.startApp(); // Si el perfil existe, inicia la app
                                 } else {
-                                    this.ui.profileSetup.classList.remove('hidden');
+                                    this.ui.profileSetup.classList.remove('hidden'); // Si no, muestra la configuración
+                                }
+                            } else {
+                                // Si no hay usuario, intenta loguear anónimamente
+                                try {
+                                    await signInAnonymously(auth);
+                                } catch (error) {
+                                    console.error("Error en login anónimo:", error);
+                                    alert("No se pudo conectar con el servidor de autenticación.");
                                 }
                             }
                         });
-                        
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
+
                     } catch (error) {
                         console.error("Firebase Initialization Error:", error);
-                        alert("No se pudo inicializar la aplicación.");
+                        alert("No se pudo inicializar la aplicación. " + error.message);
                     }
                 },
 
                 async startApp() {
                     this.ui.profileSetup.classList.add('hidden');
                     this.ui.mainApp.classList.remove('hidden');
-                    this.setupEventListeners(); // Mover aquí para que los eventos se carguen
+                    this.setupEventListeners(); 
                     await this.checkAndApplyRecovery();
                     this.initChart();
                     this.update();
@@ -414,6 +403,8 @@
                             };
                         });
                         this.update();
+                    }, (error) => {
+                         console.error("Error al cargar eventos de Firebase:", error);
                     });
                 },
 
@@ -429,7 +420,7 @@
                             this.state.userProfile = {
                                 ...profileData,
                                 dynamicBaseLevel: profileData.dynamicBaseLevel || 100,
-                                lastRecoveryTimestamp: profileData.lastRecoveryTimestamp ? profileData.lastRecoveryTimestamp.toDate().toISOString() : null
+                                lastRecoveryTimestamp: profileData.lastRecoveryTimestamp ? (profileData.lastRecoveryTimestamp.toDate ? profileData.lastRecoveryTimestamp.toDate().toISOString() : profileData.lastRecoveryTimestamp) : null
                             };
                             this.ui.sexoInput.value = this.state.userProfile.sexo;
                             this.ui.pesoInput.value = this.state.userProfile.peso;
@@ -453,12 +444,17 @@
                         sexo: this.ui.sexoInput.value,
                         peso: pesoValue,
                         dynamicBaseLevel: wasFirstTime ? 100 : this.state.userProfile.dynamicBaseLevel,
-                        lastRecoveryTimestamp: wasFirstTime ? null : this.state.userProfile.lastRecoveryTimestamp,
+                        lastRecoveryTimestamp: wasFirstTime ? null : (this.state.userProfile.lastRecoveryTimestamp ? new Date(this.state.userProfile.lastRecoveryTimestamp) : null),
                     };
                     this.state.userProfile = userProfileData;
                     
                     const docRef = doc(db, `artifacts/${appId}/users/${userId}/profile/main`);
-                    await setDoc(docRef, userProfileData);
+                    
+                    const dataToSave = { ...userProfileData };
+                    if (dataToSave.lastRecoveryTimestamp) {
+                        dataToSave.lastRecoveryTimestamp = new Date(dataToSave.lastRecoveryTimestamp);
+                    }
+                    await setDoc(docRef, dataToSave);
 
                     if (wasFirstTime) { this.startApp(); } 
                     else {
@@ -471,17 +467,17 @@
                     const { db, userId, appId } = this.state.firebase;
                     
                     if (type === 'sueño') {
-                        const qualityMap = { 1.5: 0.1, 1.0: 0.05, 0.5: -0.1 }; // Good, Regular, Bad
+                        const qualityMap = { 1.5: 0.1, 1.0: 0.05, 0.5: -0.1 }; 
                         const qualityFactor = qualityMap[params.intensidad] || 0;
                         this.state.userProfile.dynamicBaseLevel += qualityFactor;
                         this.state.userProfile.dynamicBaseLevel = Math.min(this.state.userProfile.dynamicBaseLevel, 100);
                         
-                        // "Reset" by filtering events *before* adding the new sleep event
                         const sleepStartTime = startTime.getTime();
+                        
                         this.state.events = this.state.events.filter(event => new Date(event.startTime).getTime() >= sleepStartTime);
                     }
                     
-                    const newEvent = { id: Date.now(), type, params, startTime: startTime }; // Guardar como objeto Date de JS
+                    const newEvent = { id: Date.now(), type, params, startTime: startTime };
                     
                     const budgets = {
                         alcohol: { limit: 6, penalty: 0.08, types: ['alcohol'] },
@@ -499,25 +495,21 @@
 
                     if (budgetCategory) {
                         const categoryInfo = budgets[budgetCategory];
-                        // +1 for the current event
-                        const count = this.getEventCountInWindow(categoryInfo.types, 7 * 24) + 1; 
+                        const count = this.getEventCountInWindow(categoryInfo.types, 7 * 24) + 1;
                         if (count > categoryInfo.limit) {
                             this.state.userProfile.dynamicBaseLevel -= categoryInfo.penalty;
                         }
                     }
 
-                    // Add to local state first for immediate UI update
                     this.state.events.push({ ...newEvent, startTime: newEvent.startTime.toISOString() });
-                    this.saveEvents(); // Save to local storage (for temp persistence)
                     
-                    // Save to Firebase
                     const collectionRef = collection(db, `artifacts/${appId}/users/${userId}/events`);
-                    await addDoc(collectionRef, { ...newEvent, createdAt: serverTimestamp() });
+                    await addDoc(collectionRef, { type: newEvent.type, params: newEvent.params, startTime: newEvent.startTime, createdAt: serverTimestamp() });
                     await updateDoc(doc(db, `artifacts/${appId}/users/${userId}/profile/main`), {
                         dynamicBaseLevel: this.state.userProfile.dynamicBaseLevel
                     });
                     
-                    this.update();
+                    this.update(); 
                 },
 
                 async checkAndApplyRecovery() {
@@ -852,8 +844,6 @@
                     if (minutesElapsed < 0) return { effect: 0, finished: false };
                     let effectValue = 0;
                     let isFinished = false;
-                    // El evento 'sueño' ya no tiene un efecto temporal directo, sino que resetea los eventos
-                    // y afecta la línea base directamente al ser añadido.
                     const formulas = { alcohol: { duration: 360, apply: p => { const q = p.cantidad || 1, u = 8 * q * factors.factorSexoAlcohol * factors.factorPeso, d = -16 * q * factors.factorSexoAlcohol * factors.factorPeso; if (minutesElapsed < 60) return minutesElapsed / 60 * u; if (minutesElapsed < 180) return u + (minutesElapsed - 60) / 120 * (d - u); if (minutesElapsed < 360) return d * (1 - (minutesElapsed - 180) / 180); return 0; } }, modafinilo: { duration: 1020, apply: p => { const d = (p.cantidad || 100) / 100, pk = 35 * d * factors.factorPeso, pD = 660 * factors.factorSexoModafiniloDuracionMultiplier; if (minutesElapsed < 120) return minutesElapsed / 120 * pk; if (minutesElapsed < 120 + pD) return pk; if (minutesElapsed < 120 + pD + 240) return pk * (1 - (minutesElapsed - 120 - pD) / 240); return 0; } }, ejercicio: { duration: p => (p.cantidad || 30) + 120, apply: p => { const d = p.cantidad || 30, i = p.intensidad || 1, pk = 10 * i * factors.factorPeso, pD = Math.max(0, d - 15); if (minutesElapsed < 15) return minutesElapsed / 15 * pk; if (minutesElapsed < 15 + pD) return pk; if (minutesElapsed < 15 + pD + 120) return pk * (1 - (minutesElapsed - 15 - pD) / 120); return 0; } }, porno: { duration: p => (p.cantidad || 15) + 90, apply: p => { const d = p.cantidad || 15, u = 5 + d / 10, dn = -10; if (minutesElapsed < d) return minutesElapsed / d * u; if (minutesElapsed < d + 20) return u + (minutesElapsed - d) / 20 * (dn - u); if (minutesElapsed < d + 90) return dn * (1 - (minutesElapsed - d - 20) / 70); return 0; } }, cafeina: { duration: 240, apply: p => { const q = p.cantidad || 1, u = 20 * q, d = -5 * q; if (minutesElapsed < 30) return minutesElapsed / 30 * u; if (minutesElapsed < 90) return u + (minutesElapsed - 30) / 60 * (d - u); if (minutesElapsed < 240) return d * (1 - (minutesElapsed - 90) / 150); return 0; } }, te: { duration: 300, apply: p => { const q = p.cantidad || 1, u = 12 * q, d = -2 * q; if (minutesElapsed < 45) return minutesElapsed / 45 * u; if (minutesElapsed < 120) return u + (minutesElapsed - 45) / 75 * (d - u); if (minutesElapsed < 300) return d * (1 - (minutesElapsed - 120) / 180); return 0; } }, azucar: { duration: 120, apply: p => { const i = p.intensidad || 1, u = 25 * i, d = -15 * i; if (minutesElapsed < 15) return minutesElapsed / 15 * u; if (minutesElapsed < 45) return u + (minutesElapsed - 15) / 30 * (d - u); if (minutesElapsed < 120) return d * (1 - (minutesElapsed - 45) / 75); return 0; } }, sensacion: { duration: 60, apply: p => { const v = p.cantidad, pk = (v - 5) * 2.5; return minutesElapsed < 60 ? pk * (1 - minutesElapsed / 60) : 0; } }, sueño: { duration: 0, apply: p => 0 }, hrv: { duration: 180, apply: p => { const e = (p.cantidad - 55) * 0.3; return minutesElapsed < 180 ? e * (1 - minutesElapsed / 180) : 0; } }, masturbacion: { duration: p => (p.cantidad || 10) + 50, apply: p => { const d = p.cantidad || 10, u = 15, dn = -5; if (minutesElapsed < d) return minutesElapsed / d * u; if (minutesElapsed < d + 50) return u + (minutesElapsed - d) / 50 * (dn - u); return 0; } }, orgasmo: { duration: 150, apply: () => { const u = 40, d = -20; if (minutesElapsed < 3) return u; if (minutesElapsed < 15) return d; if (minutesElapsed < 150) return d * (1 - (minutesElapsed - 15) / 135); return 0; } } };
                     const formula = formulas[event.type];
                     if (formula) {
@@ -935,4 +925,5 @@
     </script>
 </body>
 </html>
+
 
