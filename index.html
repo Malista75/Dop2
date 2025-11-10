@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v11.4 (Conexión Corregida)</title>
+    <title>Simulador Neuroquímico v11.7 (Arranque Definitivo)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -165,6 +165,7 @@
                     </div>
                 </div>
                  <div id="sleep-debt-indicator" class="text-red-400 font-semibold mt-2 hidden"></div>
+                 <div id="fasting-indicator" class="font-semibold mt-2 hidden"></div>
             </div>
 
             <div class="bg-base-200 p-4 md:p-6 rounded-2xl shadow-xl mb-6 h-96">
@@ -197,11 +198,12 @@
                 <div class="bg-base-200 p-6 rounded-2xl shadow-xl">
                     <h3 class="text-2xl font-bold text-white mb-4">Añadir Evento</h3>
                     <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                        <button data-event="sueño" class="event-btn bg-indigo-600 hover:bg-indigo-700 col-span-1 lg:col-span-3" data-tooltip="Efecto: (+/-) según horas (>4h) y calidad.&#x000A;Duración: 24h.&#x000A;Bono por 8h buenas: +12.">Sueño</button>
+                        <button data-event="sueño" class="event-btn bg-indigo-600 hover:bg-indigo-700 col-span-1 lg:col-span-3" data-tooltip="Efecto: Resetea el índice a la Línea Base.&#x000A;La calidad afecta la Línea Base a largo plazo.">Sueño</button>
+                        <button data-event="comida" class="event-btn bg-yellow-600 hover:bg-yellow-700 col-span-1 lg:col-span-3" data-tooltip="Efecto: Resetea el reloj de ayuno.&#x000A;El ayuno (14-24h) da un bono de alerta.">Comida</button>
                         <button data-event="hrv" class="event-btn bg-cyan-600 hover:bg-cyan-700" data-tooltip="Efecto: Modificador temporal según valor.&#x000A;Duración: 3h.&#x000A;Ej: 80ms = +7.5.">HRV</button>
                         <button data-event="ejercicio" class="event-btn bg-emerald-500 hover:bg-emerald-600" data-tooltip="Efecto: Pico positivo según intensidad.&#x000A;Duración: Sesión + 2h.&#x000A;Ej: 30min medio = +10.">Ejercicio</button>
                         <button data-event="alcohol" class="event-btn bg-purple-600 hover:bg-purple-700" data-tooltip="Efecto: Pico +8/ud, Bajón -16/ud.&#x000A;Duración: 6h.&#x000A;Ajustado por sexo y peso.">Alcohol</button>
-                        <button data-event="modafinilo" class="event-btn bg-sky-500 hover:bg-sky-600" data-tooltip="Efecto: Pico 7h, decae a 12h, negativo 12-15h.&#x000A;Ajustado por sexo y peso.">Modafinilo</button>
+                        <button data-event="modafinilo" class="event-btn bg-sky-500 hover:bg-sky-600" data-tooltip="Efecto: +20 por 100mg. Pico 7h, decae a 12h, negativo 12-15h.&#x000A;Ajustado por sexo y peso.">Modafinilo</button>
                         <button data-event="cafeina" class="event-btn bg-yellow-700 hover:bg-yellow-800" data-tooltip="Efecto: Pico +20/taza, Bajón -5/taza.&#x0F;Duración: 4h.">Cafeína</button>
                         <button data-event="te" class="event-btn bg-lime-600 hover:bg-lime-700" data-tooltip="Efecto: Pico +12/taza, Bajón -2/taza.&#x000A;Duración: 5h.">Té</button>
                         <button data-event="azucar" class="event-btn bg-gray-400 hover:bg-gray-500" data-tooltip="Efecto: Pico +25, Bajón -15 (medio).&#x000A;Duración: 2h.">Azúcar</button>
@@ -279,6 +281,7 @@
                         baseLevelDisplay: document.getElementById('base-level-display'),
                         chartCanvas: document.getElementById('neuro-chart'),
                         sleepDebtIndicator: document.getElementById('sleep-debt-indicator'),
+                        fastingIndicator: document.getElementById('fasting-indicator'),
                         activeEventsContainer: document.getElementById('active-events'),
                         noEventsMsg: document.getElementById('no-events-msg'),
                         eventModal: document.getElementById('event-modal'),
@@ -456,16 +459,21 @@
                     
                     const docRef = doc(db, `artifacts/${appId}/users/${userId}/profile/main`);
                     
-                    const dataToSave = { ...userProfileData };
-                    if (dataToSave.lastRecoveryTimestamp) {
-                        dataToSave.lastRecoveryTimestamp = new Date(dataToSave.lastRecoveryTimestamp);
-                    }
-                    await setDoc(docRef, dataToSave);
+                    try {
+                        const dataToSave = { ...userProfileData };
+                        if (dataToSave.lastRecoveryTimestamp) {
+                            dataToSave.lastRecoveryTimestamp = new Date(dataToSave.lastRecoveryTimestamp);
+                        }
+                        await setDoc(docRef, dataToSave);
 
-                    if (wasFirstTime) { this.startApp(); } 
-                    else {
-                        this.ui.profileSetup.classList.add('hidden');
-                        this.update();
+                        if (wasFirstTime) { this.startApp(); } 
+                        else {
+                            this.ui.profileSetup.classList.add('hidden');
+                            this.update();
+                        }
+                    } catch (error) {
+                        console.error("Error al guardar perfil (REVISA TUS REGLAS DE FIREBASE):", error);
+                        alert("Error al guardar el perfil. Asegúrate de que las reglas de seguridad de Firestore (Paso 5 de la guía) están bien configuradas para permitir escritura.");
                     }
                 },
                                 
@@ -474,7 +482,7 @@
                     const { userId, appId } = this.state;
                     
                     if (type === 'sueño') {
-                        const qualityMap = { 1.5: 0.1, 1.0: 0.05, 0.5: -0.2 }; // Penalización por mal sueño aumentada
+                        const qualityMap = { 1.5: 0.1, 1.0: 0.05, 0.5: -0.2 }; 
                         const qualityFactor = qualityMap[params.intensidad] || 0;
                         this.state.userProfile.dynamicBaseLevel += qualityFactor;
                         this.state.userProfile.dynamicBaseLevel = Math.min(this.state.userProfile.dynamicBaseLevel, 100);
@@ -488,9 +496,9 @@
                     
                     // Presupuestos personalizados
                     const budgets = {
-                        alcohol: { limit: 6, penalty: 0.1, types: ['alcohol'] }, // Límite 6, Penalización 0.1
-                        sexual: { limit: 0, penalty: 0.13, types: ['porno', 'masturbacion'] }, // Límite 0, Penalización 0.13
-                        azucar: { limit: 6, penalty: 0.04, types: ['azucar']} // Límite 6, Penalización 0.04
+                        alcohol: { limit: 6, penalty: 0.1, types: ['alcohol'] }, 
+                        sexual: { limit: 0, penalty: 0.13, types: ['porno', 'masturbacion'] },
+                        azucar: { limit: 6, penalty: 0.04, types: ['azucar']}
                     };
 
                     let budgetCategory = null;
@@ -511,11 +519,16 @@
 
                     this.state.events.push({ ...newEvent, startTime: newEvent.startTime.toISOString() });
                     
-                    const collectionRef = collection(db, `artifacts/${appId}/users/${userId}/events`);
-                    await addDoc(collectionRef, { type: newEvent.type, params: newEvent.params, startTime: newEvent.startTime, createdAt: serverTimestamp() });
-                    await updateDoc(doc(db, `artifacts/${appId}/users/${userId}/profile/main`), {
-                        dynamicBaseLevel: this.state.userProfile.dynamicBaseLevel
-                    });
+                    try {
+                        const collectionRef = collection(db, `artifacts/${appId}/users/${userId}/events`);
+                        await addDoc(collectionRef, { type: newEvent.type, params: newEvent.params, startTime: newEvent.startTime, createdAt: serverTimestamp() });
+                        await updateDoc(doc(db, `artifacts/${appId}/users/${userId}/profile/main`), {
+                            dynamicBaseLevel: this.state.userProfile.dynamicBaseLevel
+                        });
+                    } catch (error) {
+                        console.error("Error al guardar evento (REVISA TUS REGLAS DE FIREBASE):", error);
+                        alert("Error al guardar el evento. Asegúrate de que las reglas de seguridad de Firestore (Paso 5 de la guía) están bien configuradas.");
+                    }
                     
                     this.update(); 
                 },
@@ -602,8 +615,40 @@
                     const awakeThreshold = 18;
                     if (hoursSinceWaking > awakeThreshold) {
                         const deprivationHours = Math.floor(hoursSinceWaking - awakeThreshold);
-                        const penalty = deprivationHours * 1.0; // Penalización aumentada
+                        const penalty = deprivationHours * 1.0; 
                         return -penalty;
+                    }
+                    return 0;
+                },
+
+                calculateFastingBonus(now) {
+                    const foodEvents = this.state.events
+                        .filter(e => e.type === 'comida')
+                        .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+
+                    if (foodEvents.length === 0) return 0; // No food logged, no bonus
+
+                    const lastFoodTime = new Date(foodEvents[0].startTime).getTime();
+                    const hoursSinceFood = (now - lastFoodTime) / 3600000;
+
+                    const bonusStart = 14; // Start bonus after 14h
+                    const bonusEnd = 24;   // End bonus at 24h
+                    const penaltyStart = 24; // Start penalty after 24h
+
+                    if (hoursSinceFood <= bonusStart) {
+                        return 0; // 0-14h: No effect
+                    }
+                    if (hoursSinceFood <= bonusEnd) {
+                        // 14-24h: Bonus phase
+                        const bonusHours = hoursSinceFood - bonusStart;
+                        return bonusHours * 1.0; // +1 point per hour, max +10
+                    }
+                    if (hoursSinceFood > penaltyStart) {
+                        // >24h: Penalty phase
+                        const maxBonus = bonusEnd - bonusStart; // 10
+                        const penaltyHours = hoursSinceFood - penaltyStart;
+                        const penalty = penaltyHours * 1.5; // -1.5 per hour
+                        return maxBonus - penalty; // Starts at +10 and drops
                     }
                     return 0;
                 },
@@ -625,14 +670,14 @@
                             totalEffectNow += effectResult.effect;
                         });
 
-                        const sleepDebt = this.calculateSleepDebt(now);
-                        totalEffectNow += sleepDebt;
+                        totalEffectNow += this.calculateSleepDebt(now);
+                        totalEffectNow += this.calculateFastingBonus(now);
                         
                         const displayEvents = this.state.events.filter(event => !this.getEventEffect(event, factors, now).finished);
                         
                         this.state.currentIndex = Math.round(this.state.userProfile.dynamicBaseLevel + totalEffectNow);
                         
-                        this.updateUI(displayEvents, sleepDebt);
+                        this.updateUI(displayEvents, this.calculateSleepDebt(now), this.calculateFastingBonus(now));
                         this.updateChart(allPoints);
                     } catch (error) {
                         console.error("Update cycle error:", error);
@@ -675,7 +720,7 @@
                     this.ui.abstinenceSugar.textContent = `${daysSince(lastEventDate(['azucar']))} días`;
                 },
 
-                updateUI(displayEvents, sleepDebt) {
+                updateUI(displayEvents, sleepDebt, fastingBonus) {
                     this.ui.userIdDisplay.textContent = `ID Sesión: ${this.state.userId ? this.state.userId.substring(0, 8) : 'Cargando'}...`;
                     this.ui.currentIndexDisplay.textContent = this.state.currentIndex;
                     this.ui.baseLevelDisplay.textContent = this.state.userProfile.dynamicBaseLevel.toFixed(2);
@@ -686,6 +731,19 @@
                     } else {
                         this.ui.sleepDebtIndicator.classList.add('hidden');
                     }
+
+                    if (fastingBonus > 0) {
+                        this.ui.fastingIndicator.textContent = `Bono de Ayuno: +${fastingBonus.toFixed(1)} pts`;
+                        this.ui.fastingIndicator.className = 'font-semibold mt-2 text-green-400';
+                        this.ui.fastingIndicator.classList.remove('hidden');
+                    } else if (fastingBonus < 0) {
+                         this.ui.fastingIndicator.textContent = `Hambre: ${fastingBonus.toFixed(1)} pts`;
+                         this.ui.fastingIndicator.className = 'font-semibold mt-2 text-red-400';
+                         this.ui.fastingIndicator.classList.remove('hidden');
+                    } else {
+                        this.ui.fastingIndicator.classList.add('hidden');
+                    }
+
 
                     const alcoholCount = this.getEventCountInWindow(['alcohol'], 7 * 24);
                     const sexualCount = this.getEventCountInWindow(['porno', 'masturbacion'], 7 * 24);
@@ -841,7 +899,7 @@
                     });
                 },
                 
-                openEventModal(t){this.state.currentEventType=t;const e=`<div class="grid grid-cols-2 gap-4"><div><label for="param-date" class="block text-gray-300 mb-1 font-semibold">Fecha</label><input type="date" id="param-date" class="w-full bg-base-300 rounded-lg px-4 py-3" required></div><div><label for="param-time" class="block text-gray-300 mb-1 font-semibold">Hora</label><input type="time" id="param-time" class="w-full bg-base-300 rounded-lg px-4 py-3" required></div></div>`,i={alcohol:{title:"Consumo de Alcohol",inputs:`<label class="font-semibold">Nº de Bebidas</label><input type="number" id="param-cantidad" value="1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},modafinilo:{title:"Dosis de Modafinilo",inputs:`<label class="font-semibold">Dosis (mg)</label><input type="number" id="param-cantidad" value="100" step="50" min="50" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},ejercicio:{title:"Sesión de Ejercicio",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="30" step="10" min="10" class="w-full bg-base-300 rounded-lg px-4 py-3" required><label class="font-semibold">Intensidad</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.7">Baja</option><option value="1.0" selected>Media</option><option value="1.5">Alta</option></select>${e}`},porno:{title:"Consumo de Pornografía",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="15" step="5" min="5" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},cafeina:{title:"Consumo de Cafeína",inputs:`<label class="font-semibold">Nº de Tazas</label><input type="number" id="param-cantidad" value="1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},te:{title:"Consumo de Té",inputs:`<label class="font-semibold">Nº de Tazas</label><input type="number" id="param-cantidad" value="1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},azucar:{title:"Consumo de Azúcar",inputs:`<label classs="font-semibold">Intensidad</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.5">Baja</option><option value="1.0" selected>Media</option><option value="2.0">Alta</option></select>${e}`},sueño:{title:"Registro de Sueño",inputs:`<label class="font-semibold">Horas Dormidas</label><input type="number" id="param-cantidad" step="0.5" value="8" min="0" class="w-full bg-base-300 rounded-lg px-4 py-3" required><label class="font-semibold">Calidad del Sueño</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.5">Mala</option><option value="1.0" selected>Regular</option><option value="1.5">Buena</option></select>${e}`},hrv:{title:"Registro de HRV",inputs:`<label class="font-semibold">Valor HRV (ms)</label><input type="number" id="param-cantidad" value="55" min="10" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},masturbacion:{title:"Sesión de Masturbación",inputs:`<label class="font-semibold">Duración (min)</LabeL><input type="number" id="param-cantidad" value="10" step="5" min="5" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},orgasmo:{title:"Registro de Orgasmo",inputs:e}};this.ui.eventModalTitle.textContent=i[t].title,this.ui.eventInputsContainer.innerHTML=i[t].inputs;const s=new Date;document.getElementById("param-date").valueAsDate=s,document.getElementById("param-time").value=s.toTimeString().slice(0,5),this.ui.eventModal.classList.add("flex"),this.ui.eventModal.classList.remove("hidden"),setTimeout(()=>this.ui.eventModal.querySelector(".modal-content").classList.remove("scale-95"),10)},
+                openEventModal(t){this.state.currentEventType=t;const e=`<div class="grid grid-cols-2 gap-4"><div><label for="param-date" class="block text-gray-300 mb-1 font-semibold">Fecha</label><input type="date" id="param-date" class="w-full bg-base-300 rounded-lg px-4 py-3" required></div><div><label for="param-time" class="block text-gray-300 mb-1 font-semibold">Hora</label><input type="time" id="param-time" class="w-full bg-base-300 rounded-lg px-4 py-3" required></div></div>`,i={alcohol:{title:"Consumo de Alcohol",inputs:`<label class="font-semibold">Nº de Bebidas</label><input type="number" id="param-cantidad" value="1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},modafinilo:{title:"Dosis de Modafinilo",inputs:`<label class="font-semibold">Dosis (mg)</label><input type="number" id="param-cantidad" value="100" step="50" min="50" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},ejercicio:{title:"Sesión de Ejercicio",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="30" step="10" min="10" class="w-full bg-base-300 rounded-lg px-4 py-3" required><label class="font-semibold">Intensidad</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.7">Baja</option><option value="1.0" selected>Media</option><option value="1.5">Alta</option></select>${e}`},porno:{title:"Consumo de Pornografía",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="15" step="5" min="5" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},cafeina:{title:"Consumo de Cafeína",inputs:`<label class="font-semibold">Nº de Tazas</label><input type="number" id="param-cantidad" value="1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},te:{title:"Consumo de Té",inputs:`<label class="font-semibold">Nº de Tazas</label><input type="number" id="param-cantidad" value="1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},azucar:{title:"Consumo de Azúcar",inputs:`<label class="font-semibold">Intensidad</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.5">Baja</option><option value="1.0" selected>Media</option><option value="2.0">Alta</option></select>${e}`},sueño:{title:"Registro de Sueño",inputs:`<label class="font-semibold">Horas Dormidas</label><input type="number" id="param-cantidad" step="0.5" value="8" min="0" class="w-full bg-base-300 rounded-lg px-4 py-3" required><label class="font-semibold">Calidad del Sueño</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.5">Mala</option><option value="1.0" selected>Regular</option><option value="1.5">Buena</option></select>${e}`},hrv:{title:"Registro de HRV",inputs:`<label class="font-semibold">Valor HRV (ms)</label><input type="number" id="param-cantidad" value="55" min="10" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},masturbacion:{title:"Sesión de Masturbación",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="10" step="5" min="5" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},orgasmo:{title:"Registro de Orgasmo",inputs:e},comida:{title:"Registrar Comida",inputs:e}};this.ui.eventModalTitle.textContent=i[t].title,this.ui.eventInputsContainer.innerHTML=i[t].inputs;const s=new Date;document.getElementById("param-date").valueAsDate=s,document.getElementById("param-time").value=s.toTimeString().slice(0,5),this.ui.eventModal.classList.add("flex"),this.ui.eventModal.classList.remove("hidden"),setTimeout(()=>this.ui.eventModal.querySelector(".modal-content").classList.remove("scale-95"),10)},
                 
                 closeEventModal(){this.ui.eventModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.ui.eventModal.classList.add("hidden"),this.ui.eventModal.classList.remove("flex")},300)},
                 
@@ -856,21 +914,19 @@
                     const formulas = {
                         alcohol: { duration: 360, apply: p => { const q = p.cantidad || 1, u = 8 * q * factors.factorSexoAlcohol * factors.factorPeso, d = -16 * q * factors.factorSexoAlcohol * factors.factorPeso; if (minutesElapsed < 60) return minutesElapsed / 60 * u; if (minutesElapsed < 180) return u + (minutesElapsed - 60) / 120 * (d - u); if (minutesElapsed < 360) return d * (1 - (minutesElapsed - 180) / 180); return 0; } },
                         modafinilo: {
-                            duration: 1080, // 18 horas total
+                            duration: 900, // 15 horas total
                             apply: (params) => {
                                 const dosageMultiplier = (params.cantidad || 100) / 100;
-                                const peak = 35 * dosageMultiplier * factors.factorPeso;
-                                const peakNegative = -10 * dosageMultiplier * factors.factorPeso; // Nerviosismo
-                                const plateauDuration = 420 * factors.factorSexoModafiniloDuracionMultiplier; // 7h de pico
+                                const peak = 20 * dosageMultiplier * factors.factorPeso; // Pico reducido a +20
+                                const peakNegative = -10 * dosageMultiplier * factors.factorPeso;
                                 const riseTime = 120; // 2h
+                                const plateauDuration = 420 * factors.factorSexoModafiniloDuracionMultiplier; // 7h de pico
                                 const fallToZeroTime = 180; // 3h (de 9 a 12h)
                                 const fallToNegativeTime = 180; // 3h (de 12 a 15h)
-                                const recoveryTime = 180; // 3h (de 15 a 18h)
                                 
                                 const plateauEnd = riseTime + plateauDuration; // 120 + 420 = 540 (9h)
                                 const zeroEnd = plateauEnd + fallToZeroTime; // 540 + 180 = 720 (12h)
                                 const negativePeakEnd = zeroEnd + fallToNegativeTime; // 720 + 180 = 900 (15h)
-                                const recoveryEnd = negativePeakEnd + recoveryTime; // 900 + 180 = 1080 (18h)
 
                                 if (minutesElapsed < riseTime) { // 0-2h: Subida
                                     return (minutesElapsed / riseTime) * peak;
@@ -881,11 +937,8 @@
                                 if (minutesElapsed < zeroEnd) { // 9h-12h: Decaimiento a 0
                                     return peak * (1 - (minutesElapsed - plateauEnd) / fallToZeroTime);
                                 }
-                                if (minutesElapsed < negativePeakEnd) { // 12h-15h: Caída a -10
+                                if (minutesElapsed < negativePeakEnd) { // 12h-15h: Caída a -10 (nerviosismo)
                                     return ((minutesElapsed - zeroEnd) / fallToNegativeTime) * peakNegative;
-                                }
-                                if (minutesElapsed < recoveryEnd) { // 15h-18h: Recuperación a 0
-                                    return peakNegative * (1 - (minutesElapsed - negativePeakEnd) / recoveryTime);
                                 }
                                 return 0;
                             }
@@ -896,7 +949,8 @@
                         te: { duration: 300, apply: p => { const q = p.cantidad || 1, u = 12 * q, d = -2 * q; if (minutesElapsed < 45) return minutesElapsed / 45 * u; if (minutesElapsed < 120) return u + (minutesElapsed - 45) / 75 * (d - u); if (minutesElapsed < 300) return d * (1 - (minutesElapsed - 120) / 180); return 0; } }, 
                         azucar: { duration: 120, apply: p => { const i = p.intensidad || 1, u = 25 * i, d = -15 * i; if (minutesElapsed < 15) return minutesElapsed / 15 * u; if (minutesElapsed < 45) return u + (minutesElapsed - 15) / 30 * (d - u); if (minutesElapsed < 120) return d * (1 - (minutesElapsed - 45) / 75); return 0; } }, 
                         sensacion: { duration: 60, apply: p => { const v = p.cantidad, pk = (v - 5) * 2.5; return minutesElapsed < 60 ? pk * (1 - minutesElapsed / 60) : 0; } }, 
-                        sueño: { duration: 0, apply: p => 0 }, // El sueño ya no tiene efecto temporal
+                        sueño: { duration: 0, apply: p => 0 }, 
+                        comida: { duration: 0, apply: p => 0 }, 
                         hrv: { duration: 180, apply: p => { const e = (p.cantidad - 55) * 0.3; return minutesElapsed < 180 ? e * (1 - minutesElapsed / 180) : 0; } }, 
                         masturbacion: { duration: p => (p.cantidad || 10) + 50, apply: p => { const d = p.cantidad || 10, u = 15, dn = -5; if (minutesElapsed < d) return minutesElapsed / d * u; if (minutesElapsed < d + 50) return u + (minutesElapsed - d) / 50 * (dn - u); return 0; } }, 
                         orgasmo: { duration: 150, apply: () => { const u = 40, d = -20; if (minutesElapsed < 3) return u; if (minutesElapsed < 15) return d; if (minutesElapsed < 150) return d * (1 - (minutesElapsed - 15) / 135); return 0; } } 
@@ -935,6 +989,7 @@
                             totalEffect += this.getEventEffect(event, factors, time).effect;
                         });
                         totalEffect += this.calculateSleepDebt(time);
+                        totalEffect += this.calculateFastingBonus(time); // Añadir bono de ayuno
                         allPoints.push({ x: time, y: Math.round(baseLevel + totalEffect) });
                     }
                     return allPoints;
