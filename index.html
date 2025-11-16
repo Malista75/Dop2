@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+
 <html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v11.7 (Arranque Definitivo)</title>
+    <title>Simulador Neuroquímico v12.0 (Estadísticas Completas)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -230,6 +230,7 @@
                 <div class="bg-base-200 p-6 rounded-2xl shadow-xl">
                     <h3 class="text-2xl font-bold text-white mb-4">Estadísticas</h3>
                     <div id="stats-container" class="space-y-2 text-gray-300">
+                        <p>Media Hoy: <span id="avg-today" class="font-bold text-accent">--</span></p>
                         <p>Media Ayer: <span id="avg-yesterday" class="font-bold text-accent">--</span></p>
                         <p>Media Últimos 7 Días: <span id="avg-week" class="font-bold text-accent">--</span></p>
                         <p>Media Total: <span id="avg-total" class="font-bold text-accent">--</span></p>
@@ -244,6 +245,21 @@
                     </div>
                 </div>
             </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div class="bg-base-200 p-6 rounded-2xl shadow-xl">
+                    <h3 class="text-2xl font-bold text-white mb-4">Días de Consumo (Histórico)</h3>
+                    <div class="flex justify-around">
+                        <div class="w-1/2 h-40"><canvas id="alcohol-chart"></canvas></div>
+                        <div class="w-1/2 h-40"><canvas id="sexual-chart"></canvas></div>
+                    </div>
+                </div>
+                <div class="bg-base-200 p-6 rounded-2xl shadow-xl">
+                    <h3 class="text-2xl font-bold text-white mb-4">Calidad del Sueño (Últ. 30 días)</h3>
+                     <div class="w-full h-40"><canvas id="sleep-quality-chart"></canvas></div>
+                </div>
+            </div>
+
 
         </div>
     </div>
@@ -261,7 +277,7 @@
                     events: [], 
                     currentIndex: 100, 
                     currentEventType: null, 
-                    chart: null, 
+                    charts: {}, // Almacenar todas las gráficas
                     userId: null, 
                     apiKeyPromise: null,
                     firebase: {}, 
@@ -305,12 +321,16 @@
                         weeklyBudgetTracker: document.getElementById('weekly-budget-tracker'),
                         statsContainer: document.getElementById('stats-container'),
                         abstinenceContainer: document.getElementById('abstinence-container'),
+                        avgToday: document.getElementById('avg-today'),
                         avgYesterday: document.getElementById('avg-yesterday'),
                         avgWeek: document.getElementById('avg-week'),
                         avgTotal: document.getElementById('avg-total'),
                         abstinenceAlcohol: document.getElementById('abstinence-alcohol'),
                         abstinenceSexual: document.getElementById('abstinence-sexual'),
                         abstinenceSugar: document.getElementById('abstinence-sugar'),
+                        alcoholChart: document.getElementById('alcohol-chart'),
+                        sexualChart: document.getElementById('sexual-chart'),
+                        sleepQualityChart: document.getElementById('sleep-quality-chart'),
                     };
                     
                     document.querySelectorAll('.event-btn').forEach(btn => {
@@ -387,7 +407,7 @@
                     this.ui.mainApp.classList.remove('hidden');
                     this.setupEventListeners(); 
                     await this.checkAndApplyRecovery();
-                    this.initChart();
+                    this.initCharts();
                     this.update();
                     setInterval(() => this.update(), 60000); 
                 },
@@ -483,7 +503,12 @@
                     
                     if (type === 'sueño') {
                         const qualityMap = { 1.5: 0.1, 1.0: 0.05, 0.5: -0.2 }; 
-                        const qualityFactor = qualityMap[params.intensidad] || 0;
+                        let qualityFactor = qualityMap[params.intensidad] || 0;
+                        
+                        if (params.cantidad < 6) { // Penalización extra por < 6h
+                            qualityFactor -= 0.15;
+                        }
+
                         this.state.userProfile.dynamicBaseLevel += qualityFactor;
                         this.state.userProfile.dynamicBaseLevel = Math.min(this.state.userProfile.dynamicBaseLevel, 100);
                         
@@ -686,6 +711,7 @@
                 
                 updateStatsAndAbstinence(allPoints) {
                     const now = new Date();
+                    const todayStart = new Date(now).setHours(0,0,0,0);
                     const yesterday = new Date(now);
                     yesterday.setDate(now.getDate() - 1);
                     const weekAgo = new Date(now);
@@ -694,11 +720,13 @@
                     const yesterdayStart = new Date(yesterday).setHours(0,0,0,0);
                     const yesterdayEnd = new Date(yesterday).setHours(23,59,59,999);
 
+                    const todayPoints = allPoints.filter(p => p.x >= todayStart && p.x <= now.getTime());
                     const yesterdayPoints = allPoints.filter(p => p.x >= yesterdayStart && p.x <= yesterdayEnd);
                     const weekPoints = allPoints.filter(p => p.x >= weekAgo.getTime());
 
                     const avg = (points) => points.length > 0 ? (points.reduce((sum, p) => sum + p.y, 0) / points.length).toFixed(1) : '--';
 
+                    this.ui.avgToday.textContent = avg(todayPoints);
                     this.ui.avgYesterday.textContent = avg(yesterdayPoints);
                     this.ui.avgWeek.textContent = avg(weekPoints);
                     this.ui.avgTotal.textContent = avg(allPoints.filter(p => p.x <= now.getTime()));
@@ -718,6 +746,8 @@
                     this.ui.abstinenceAlcohol.textContent = `${daysSince(lastEventDate(['alcohol']))} días`;
                     this.ui.abstinenceSexual.textContent = `${daysSince(lastEventDate(['porno', 'masturbacion']))} días`;
                     this.ui.abstinenceSugar.textContent = `${daysSince(lastEventDate(['azucar']))} días`;
+
+                    this.updateDonutCharts();
                 },
 
                 updateUI(displayEvents, sleepDebt, fastingBonus) {
@@ -884,9 +914,29 @@
                     }
                 },
                 
-                initChart() {
-                    const ctx = this.ui.chartCanvas.getContext('2d');
-                    this.state.chart = new Chart(ctx, {
+                initCharts() {
+                    const commonDoughnutOptions = {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: { position: 'bottom', labels: { color: '#9ca3af' } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) label += ': ';
+                                        if (context.parsed !== null) {
+                                            label += context.parsed + '%';
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    };
+
+                    this.state.charts.main = new Chart(this.ui.chartCanvas.getContext('2d'), {
                         type: 'line', 
                         data: { 
                             datasets: [
@@ -896,6 +946,24 @@
                             ] 
                         },
                         options: { parsing: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'dd MMM' }, tooltipFormat: 'dd MMM, HH:mm' }, grid: { color: '#374151' }, ticks: { color: '#9ca3af', source: 'auto' } }, y: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' }, min: 0, max: 200 } }, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } } }
+                    });
+
+                    this.state.charts.alcohol = new Chart(this.ui.alcoholChart.getContext('2d'), {
+                        type: 'doughnut',
+                        data: { labels: ['Días con Alcohol', 'Días sin Alcohol'], datasets: [{ data: [0, 0], backgroundColor: ['#ef4444', '#22c55e'] }] },
+                        options: { ...commonDoughnutOptions, plugins: { ...commonDoughnutOptions.plugins, title: { display: true, text: 'Consumo de Alcohol', color: '#9ca3af' } } }
+                    });
+
+                    this.state.charts.sexual = new Chart(this.ui.sexualChart.getContext('2d'), {
+                        type: 'doughnut',
+                        data: { labels: ['Días con Evento', 'Días sin Evento'], datasets: [{ data: [0, 0], backgroundColor: ['#f97316', '#22c55e'] }] },
+                        options: { ...commonDoughnutOptions, plugins: { ...commonDoughnutOptions.plugins, title: { display: true, text: 'Act. Sexual (Porno/Masturb.)', color: '#9ca3af' } } }
+                    });
+                    
+                    this.state.charts.sleep = new Chart(this.ui.sleepQualityChart.getContext('2d'), {
+                        type: 'doughnut',
+                        data: { labels: ['Sueño Bueno', 'Sueño Regular', 'Sueño Malo'], datasets: [{ data: [0, 0, 0], backgroundColor: ['#22c55e', '#eab308', '#ef4444'] }] },
+                        options: { ...commonDoughnutOptions, plugins: { ...commonDoughnutOptions.plugins, title: { display: true, text: 'Calidad de Sueño (30d)', color: '#9ca3af' } } }
                     });
                 },
                 
@@ -996,7 +1064,7 @@
                 },
 
                 updateChart(allPoints) {
-                    if (!this.state.chart || !allPoints) return;
+                    if (!this.state.charts.main || !allPoints) return;
                     try {
                         const now = new Date();
                         const historicalPoints = allPoints.filter(p => p.x <= now.getTime());
@@ -1018,16 +1086,58 @@
                             }
                         }
 
-                        this.state.chart.data.datasets[0].data = historicalPoints;
-                        this.state.chart.data.datasets[1].data = forecastPoints;
-                        this.state.chart.data.datasets[2].data = movingAveragePoints;
+                        this.state.charts.main.data.datasets[0].data = historicalPoints;
+                        this.state.charts.main.data.datasets[1].data = forecastPoints;
+                        this.state.charts.main.data.datasets[2].data = movingAveragePoints;
                         
-                        this.state.chart.update('none'); 
+                        this.state.charts.main.update('none'); 
                     } catch (t) {
                         console.error("Error updating chart:", t);
                     }
                 },
                 
+                updateDonutCharts() {
+                    const now = new Date();
+                    const historyStartDate = this.state.events.length > 0 ? new Date(this.state.events.sort((a,b) => new Date(a.startTime) - new Date(b.startTime))[0].startTime) : new Date();
+                    const totalDays = Math.max(1, Math.ceil((now.getTime() - historyStartDate.getTime()) / (1000 * 60 * 60 * 24)));
+
+                    const daysWithEvent = (types) => {
+                        const uniqueDays = new Set();
+                        this.state.events.forEach(event => {
+                            if (types.includes(event.type)) {
+                                uniqueDays.add(new Date(event.startTime).toDateString());
+                            }
+                        });
+                        return uniqueDays.size;
+                    };
+
+                    const alcoholDays = daysWithEvent(['alcohol']);
+                    const sexualDays = daysWithEvent(['porno', 'masturbacion']);
+
+                    this.state.charts.alcohol.data.datasets[0].data = [alcoholDays, totalDays - alcoholDays];
+                    this.state.charts.alcohol.update('none');
+
+                    this.state.charts.sexual.data.datasets[0].data = [sexualDays, totalDays - sexualDays];
+                    this.state.charts.sexual.update('none');
+                    
+                    // Sleep Quality Chart (Last 30 days)
+                    const thirtyDaysAgo = new Date(now);
+                    thirtyDaysAgo.setDate(now.getDate() - 30);
+                    const sleepEvents = this.state.events.filter(e => e.type === 'sueño' && new Date(e.startTime) >= thirtyDaysAgo);
+                    
+                    let goodSleep = 0;
+                    let regSleep = 0;
+                    let badSleep = 0;
+                    sleepEvents.forEach(e => {
+                        if (e.params.intensidad === 1.5) goodSleep++;
+                        else if (e.params.intensidad === 1.0) regSleep++;
+                        else if (e.params.intensidad === 0.5) badSleep++;
+                    });
+                    
+                    this.state.charts.sleep.data.datasets[0].data = [goodSleep, regSleep, badSleep];
+                    this.state.charts.sleep.update('none');
+                },
+
                 attachEventListeners(){this.ui.profileForm.addEventListener("submit",t=>this.saveProfile(t)),this.ui.editProfileBtn.addEventListener("click",()=>this.ui.profileSetup.classList.remove("hidden")),document.querySelectorAll(".event-btn").forEach(t=>t.addEventListener("click",()=>this.openEventModal(t.dataset.event))),this.ui.eventForm.addEventListener("submit",t=>this.handleEventSubmit(t)),this.ui.cancelEventBtn.addEventListener("click",()=>this.closeEventModal()),this.ui.sensacionSlider.addEventListener("input",t=>{this.ui.sensacionValue.textContent=t.target.value}),this.ui.addSensacionBtn.addEventListener("click",()=>{const t=parseFloat(this.ui.sensacionSlider.value);this.addEvent("sensacion",{cantidad:t},new Date),this.ui.sensacionSlider.value=5,this.ui.sensacionValue.textContent="5"}),this.ui.analyzeGeminiBtn.addEventListener("click",()=>this.handleGeminiAnalysis()),this.ui.closeGeminiBtn.addEventListener("click",()=>{this.ui.geminiModal.classList.add("hidden"),this.ui.geminiModal.classList.remove("flex")}),this.ui.apiKeyForm.addEventListener("submit", e => { e.preventDefault(); const key = this.ui.apiKeyInput.value; if(key) localStorage.setItem('geminiApiKey_v10', key); this.ui.apiKeyModal.classList.add('hidden'); this.ui.apiKeyModal.classList.remove('flex'); this.handleGeminiAnalysis(); }), this.ui.cancelApiKeyBtn.addEventListener("click", () => {this.ui.apiKeyModal.classList.add('hidden'); this.ui.apiKeyModal.classList.remove('flex');})}
             };
 
