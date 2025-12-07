@@ -2,7 +2,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v12.1 (Gestión y Borrado)</title>
+    <title>Simulador Neuroquímico v12.2 (7 Días + Zoom)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -253,7 +253,7 @@
     </div>
     
     <script type="module">
-        // Importaciones de Firebase (Incluye deleteDoc)
+        // Importaciones de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, onSnapshot, query, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -517,8 +517,6 @@
                         }
                     }
 
-                    // No hacemos push local porque el snapshot lo hará
-                    
                     try {
                         const collectionRef = collection(db, `artifacts/${appId}/users/${userId}/events`);
                         await addDoc(collectionRef, { type: newEvent.type, params: newEvent.params, startTime: newEvent.startTime, createdAt: serverTimestamp() });
@@ -539,7 +537,6 @@
 
                     try {
                         await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/events`, eventId));
-                        // El snapshot se encarga de actualizar el estado y la UI
                     } catch (error) {
                         console.error("Error al borrar evento:", error);
                         alert("No se pudo borrar el evento.");
@@ -782,7 +779,6 @@
 
                     this.ui.activeEventsContainer.innerHTML = '';
                     
-                    // Lógica actualizada: Mostrar últimos 10 eventos (activos o no)
                     const recentEvents = [...this.state.events]
                         .sort((a,b) => new Date(b.startTime) - new Date(a.startTime))
                         .slice(0, 10);
@@ -960,7 +956,8 @@
                                 { label: 'Media Móvil (7 Días)', data: [], borderColor: '#f97316', borderWidth: 2, pointRadius: 0, tension: 0.4, borderDash: [2, 2] }
                             ] 
                         },
-                        options: { parsing: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'dd MMM' }, tooltipFormat: 'dd MMM, HH:mm' }, grid: { color: '#374151' }, ticks: { color: '#9ca3af', source: 'auto' } }, y: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' }, min: 0, max: 200 } }, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+                        // AQUÍ ESTÁN LOS CAMBIOS DEL EJE Y (min 50, max 150)
+                        options: { parsing: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'dd MMM' }, tooltipFormat: 'dd MMM, HH:mm' }, grid: { color: '#374151' }, ticks: { color: '#9ca3af', source: 'auto' } }, y: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' }, min: 50, max: 150 } }, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
                     });
 
                     this.state.charts.alcohol = new Chart(this.ui.alcoholChart.getContext('2d'), {
@@ -1047,10 +1044,11 @@
                     const factors = this.calculateFactors();
                     const baseLevel = this.state.userProfile.dynamicBaseLevel;
                     const now = new Date();
-                    const twoDaysAgo = new Date(now);
-                    twoDaysAgo.setDate(now.getDate() - 2);
-                    twoDaysAgo.setHours(0, 0, 0, 0);
-                    const startDate = twoDaysAgo.getTime();
+                    const sevenDaysAgo = new Date(now);
+                    // AQUÍ ESTÁ EL CAMBIO DE FECHA: Muestra 7 días atrás
+                    sevenDaysAgo.setDate(now.getDate() - 7);
+                    sevenDaysAgo.setHours(0, 0, 0, 0);
+                    const startDate = sevenDaysAgo.getTime();
                     const oneDayForward = new Date(now);
                     oneDayForward.setDate(now.getDate() + 1);
                     const endDate = oneDayForward.getTime();
