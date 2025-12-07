@@ -1,15 +1,13 @@
-
 <html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v12.0 (Estadísticas Completas)</title>
+    <title>Simulador Neuroquímico v12.1 (Gestión y Borrado)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
     
-    <!-- Chart.js y adaptador de fecha (con versiones compatibles) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
@@ -33,32 +31,22 @@
         .modal-backdrop { transition: opacity 0.3s ease; }
         .modal-content { transition: transform 0.3s ease; }
         input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 24px;
-            height: 24px;
-            background: #3b82f6;
-            cursor: pointer;
-            border-radius: 50%;
+            -webkit-appearance: none; appearance: none;
+            width: 24px; height: 24px;
+            background: #3b82f6; cursor: pointer; border-radius: 50%;
         }
         input[type="range"]::-moz-range-thumb {
-            width: 24px;
-            height: 24px;
-            background: #3b82f6;
-            cursor: pointer;
-            border-radius: 50%;
+            width: 24px; height: 24px;
+            background: #3b82f6; cursor: pointer; border-radius: 50%;
         }
         .gemini-spinner {
             border: 4px solid rgba(255, 255, 255, 0.2);
             border-left-color: #3b82f6;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 40px; height: 40px;
             animation: spin 1s linear infinite;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         
         [data-tooltip] { position: relative; }
         [data-tooltip]::after {
@@ -80,7 +68,7 @@
 
     <div id="app" class="container mx-auto p-4 md:p-6 max-w-4xl">
 
-        <div id="profile-setup" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div id="profile-setup" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 hidden">
             <div class="bg-base-200 rounded-2xl shadow-2xl p-8 w-full max-w-md">
                 <h2 class="text-3xl font-bold text-white mb-2">Configura tu Perfil</h2>
                 <p class="text-gray-400 mb-6">Tus datos se guardarán en la nube de Firebase.</p>
@@ -214,9 +202,9 @@
                 </div>
 
                 <div class="bg-base-200 p-6 rounded-2xl shadow-xl">
-                    <h3 class="text-2xl font-bold text-white mb-4">Eventos Activos</h3>
+                    <h3 class="text-2xl font-bold text-white mb-4">Últimos Eventos</h3>
                     <div id="active-events" class="space-y-3 max-h-60 overflow-y-auto">
-                        <p id="no-events-msg" class="text-gray-400">Sin eventos activos.</p>
+                        <p id="no-events-msg" class="text-gray-400">Sin eventos recientes.</p>
                     </div>
                 </div>
             </div>
@@ -265,10 +253,10 @@
     </div>
     
     <script type="module">
-        // Importaciones de Firebase
+        // Importaciones de Firebase (Incluye deleteDoc)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, addDoc, collection, onSnapshot, query, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, onSnapshot, query, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', () => {
             const App = {
@@ -277,11 +265,11 @@
                     events: [], 
                     currentIndex: 100, 
                     currentEventType: null, 
-                    charts: {}, // Almacenar todas las gráficas
+                    charts: {}, 
                     userId: null, 
                     apiKeyPromise: null,
                     firebase: {}, 
-                    appId: 'neuro-indice-app' // ID de app fijo
+                    appId: 'neuro-indice-app' 
                 },
                 ui: {},
                 
@@ -337,17 +325,20 @@
                         btn.className += ' text-white font-bold py-3 px-4 rounded-lg transition duration-300';
                     });
                     
+                    // Listener para borrar eventos (delegación)
+                    this.ui.activeEventsContainer.addEventListener('click', (e) => {
+                        const deleteBtn = e.target.closest('.delete-btn');
+                        if (deleteBtn) {
+                            this.deleteEvent(deleteBtn.dataset.id);
+                        }
+                    });
+                    
                     this.attachEventListeners();
-                    this.initFirebase(); // Iniciar Firebase
+                    this.initFirebase(); 
                 },
                 
                 async initFirebase() {
                     try {
-                        
-                        // ======================================================================
-                        // ! TU CONFIGURACIÓN DE FIREBASE (¡YA ESTÁ PEGADA!)
-                        // ======================================================================
-                        
                         const firebaseConfig = {
                           apiKey: "AIzaSyBYCR_uYoR5yFR1bOjNnnBBKXMz7Mx03ng",
                           authDomain: "neuro-indice.firebaseapp.com",
@@ -358,14 +349,6 @@
                           measurementId: "G-YF7S907YT4"
                         };
                         
-                        // ⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️⬆️
-                        
-                        if (!firebaseConfig || firebaseConfig.apiKey === "TU_API_KEY") {
-                             document.body.innerHTML = '<div class="text-white text-center p-8">Error de configuración: No se pudo conectar a la base de datos. Pega tu `firebaseConfig` en el archivo index.html (línea 900 aprox).</div>';
-                            return;
-                        }
-
-                        // Establecer appId a nivel de estado para usar en las reglas de Firestore
                         this.state.appId = firebaseConfig.projectId || 'neuro-indice-app'; 
 
                         const app = initializeApp(firebaseConfig);
@@ -373,20 +356,17 @@
                         const db = getFirestore(app);
                         this.state.firebase = { app, auth, db };
 
-                        // 1. Configurar el observador de autenticación PRIMERO
                         onAuthStateChanged(auth, async (user) => {
                             if (user) {
-                                // Usuario está logueado (anónimamente o de otra forma)
                                 this.state.userId = user.uid;
                                 this.ui.userIdDisplay.textContent = `ID Sesión: ${user.uid.substring(0, 8)}...`;
-                                await this.loadProfile(); // Cargar perfil
+                                await this.loadProfile(); 
                                 if (this.state.userProfile) {
-                                    this.startApp(); // Si el perfil existe, iniciar app
+                                    this.startApp(); 
                                 } else {
-                                    this.ui.profileSetup.classList.remove('hidden'); // Si no, mostrar configuración
+                                    this.ui.profileSetup.classList.remove('hidden'); 
                                 }
                             } else {
-                                // Si no hay usuario, intenta loguear anónimamente
                                 try {
                                     await signInAnonymously(auth);
                                 } catch (error) {
@@ -416,7 +396,7 @@
                     const { db } = this.state.firebase;
                     const { appId, userId } = this.state;
                     if (!db || !appId || !userId) {
-                        console.error("Firebase no está listo. No se pueden cargar eventos.");
+                        console.error("Firebase no está listo.");
                         return;
                     }
                     const eventsQuery = query(collection(db, `artifacts/${this.state.appId}/users/${this.state.userId}/events`));
@@ -492,8 +472,8 @@
                             this.update();
                         }
                     } catch (error) {
-                        console.error("Error al guardar perfil (REVISA TUS REGLAS DE FIREBASE):", error);
-                        alert("Error al guardar el perfil. Asegúrate de que las reglas de seguridad de Firestore (Paso 5 de la guía) están bien configuradas para permitir escritura.");
+                        console.error("Error al guardar perfil:", error);
+                        alert("Error al guardar el perfil.");
                     }
                 },
                                 
@@ -505,21 +485,16 @@
                         const qualityMap = { 1.5: 0.1, 1.0: 0.05, 0.5: -0.2 }; 
                         let qualityFactor = qualityMap[params.intensidad] || 0;
                         
-                        if (params.cantidad < 6) { // Penalización extra por < 6h
+                        if (params.cantidad < 6) { 
                             qualityFactor -= 0.15;
                         }
 
                         this.state.userProfile.dynamicBaseLevel += qualityFactor;
                         this.state.userProfile.dynamicBaseLevel = Math.min(this.state.userProfile.dynamicBaseLevel, 100);
-                        
-                        const sleepStartTime = startTime.getTime();
-                        
-                        this.state.events = this.state.events.filter(event => new Date(event.startTime).getTime() >= sleepStartTime);
                     }
                     
                     const newEvent = { id: Date.now(), type, params, startTime: startTime };
                     
-                    // Presupuestos personalizados
                     const budgets = {
                         alcohol: { limit: 6, penalty: 0.1, types: ['alcohol'] }, 
                         sexual: { limit: 0, penalty: 0.13, types: ['porno', 'masturbacion'] },
@@ -542,7 +517,7 @@
                         }
                     }
 
-                    this.state.events.push({ ...newEvent, startTime: newEvent.startTime.toISOString() });
+                    // No hacemos push local porque el snapshot lo hará
                     
                     try {
                         const collectionRef = collection(db, `artifacts/${appId}/users/${userId}/events`);
@@ -551,11 +526,24 @@
                             dynamicBaseLevel: this.state.userProfile.dynamicBaseLevel
                         });
                     } catch (error) {
-                        console.error("Error al guardar evento (REVISA TUS REGLAS DE FIREBASE):", error);
-                        alert("Error al guardar el evento. Asegúrate de que las reglas de seguridad de Firestore (Paso 5 de la guía) están bien configuradas.");
+                        console.error("Error al guardar evento:", error);
+                        alert("Error al guardar el evento.");
                     }
-                    
-                    this.update(); 
+                },
+
+                async deleteEvent(eventId) {
+                    if (!confirm("¿Estás seguro de que quieres eliminar este evento? Se recalcularán las estadísticas.")) return;
+
+                    const { db } = this.state.firebase;
+                    const { userId, appId } = this.state;
+
+                    try {
+                        await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/events`, eventId));
+                        // El snapshot se encarga de actualizar el estado y la UI
+                    } catch (error) {
+                        console.error("Error al borrar evento:", error);
+                        alert("No se pudo borrar el evento.");
+                    }
                 },
 
                 async checkAndApplyRecovery() {
@@ -651,29 +639,27 @@
                         .filter(e => e.type === 'comida')
                         .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 
-                    if (foodEvents.length === 0) return 0; // No food logged, no bonus
+                    if (foodEvents.length === 0) return 0;
 
                     const lastFoodTime = new Date(foodEvents[0].startTime).getTime();
                     const hoursSinceFood = (now - lastFoodTime) / 3600000;
 
-                    const bonusStart = 14; // Start bonus after 14h
-                    const bonusEnd = 24;   // End bonus at 24h
-                    const penaltyStart = 24; // Start penalty after 24h
+                    const bonusStart = 14; 
+                    const bonusEnd = 24;   
+                    const penaltyStart = 24;
 
                     if (hoursSinceFood <= bonusStart) {
-                        return 0; // 0-14h: No effect
+                        return 0; 
                     }
                     if (hoursSinceFood <= bonusEnd) {
-                        // 14-24h: Bonus phase
                         const bonusHours = hoursSinceFood - bonusStart;
-                        return bonusHours * 1.0; // +1 point per hour, max +10
+                        return bonusHours * 1.0; 
                     }
                     if (hoursSinceFood > penaltyStart) {
-                        // >24h: Penalty phase
-                        const maxBonus = bonusEnd - bonusStart; // 10
+                        const maxBonus = bonusEnd - bonusStart; 
                         const penaltyHours = hoursSinceFood - penaltyStart;
-                        const penalty = penaltyHours * 1.5; // -1.5 per hour
-                        return maxBonus - penalty; // Starts at +10 and drops
+                        const penalty = penaltyHours * 1.5; 
+                        return maxBonus - penalty; 
                     }
                     return 0;
                 },
@@ -774,7 +760,6 @@
                         this.ui.fastingIndicator.classList.add('hidden');
                     }
 
-
                     const alcoholCount = this.getEventCountInWindow(['alcohol'], 7 * 24);
                     const sexualCount = this.getEventCountInWindow(['porno', 'masturbacion'], 7 * 24);
                     const azucarCount = this.getEventCountInWindow(['azucar'], 7 * 24);
@@ -796,12 +781,26 @@
                     else this.ui.currentIndexDisplay.style.color = '#ffffff';
 
                     this.ui.activeEventsContainer.innerHTML = '';
-                    if (displayEvents.length === 0) {
-                        this.ui.activeEventsContainer.innerHTML = '<p class="text-gray-400">Sin eventos activos.</p>';
+                    
+                    // Lógica actualizada: Mostrar últimos 10 eventos (activos o no)
+                    const recentEvents = [...this.state.events]
+                        .sort((a,b) => new Date(b.startTime) - new Date(a.startTime))
+                        .slice(0, 10);
+
+                    if (recentEvents.length === 0) {
+                        this.ui.activeEventsContainer.innerHTML = '<p class="text-gray-400">Sin eventos recientes.</p>';
                     } else {
-                        displayEvents.sort((a,b) => new Date(b.startTime) - new Date(a.startTime)).forEach(event => {
+                        const now = Date.now();
+                        const factors = this.calculateFactors();
+
+                        recentEvents.forEach(event => {
+                            const effectInfo = this.getEventEffect(event, factors, now);
+                            const isActive = !effectInfo.finished;
+
                             const eventEl = document.createElement('div');
-                            eventEl.className = 'bg-base-300 p-3 rounded-lg flex justify-between items-center';
+                            const activeClass = isActive ? 'opacity-100 border-l-4 border-accent' : 'opacity-40 grayscale';
+                            eventEl.className = `bg-base-300 p-3 rounded-lg flex justify-between items-center ${activeClass} transition-all duration-300 group`;
+                            
                             let details = '';
                             if (event.params.cantidad) {
                                 let unit = '';
@@ -821,7 +820,23 @@
                             }
                             const timeSince = (Date.now() - new Date(event.startTime).getTime()) / 60000;
                             const timeString = timeSince < 60 ? `${Math.round(timeSince)}m` : `${(timeSince/60).toFixed(1)}h`;
-                            eventEl.innerHTML = `<div><span class="font-bold capitalize">${(event.type || '').replace('cafeina', 'Cafeína')}</span><span class="text-sm text-gray-400 ml-2">${details}</span></div> <span class="text-sm font-mono text-gray-400">hace ${timeString}</span>`;
+                            
+                            eventEl.innerHTML = `
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold capitalize">${(event.type || '').replace('cafeina', 'Cafeína')}</span>
+                                        ${!isActive ? '<span class="text-xs bg-gray-700 px-2 rounded">Inactivo</span>' : ''}
+                                    </div>
+                                    <span class="text-sm text-gray-400">${details}</span>
+                                </div> 
+                                <div class="flex items-center gap-3">
+                                    <span class="text-sm font-mono text-gray-400">hace ${timeString}</span>
+                                    <button class="delete-btn text-gray-500 hover:text-red-500 p-2 rounded-full hover:bg-base-200 transition" data-id="${event.id}" title="Borrar y recalcular">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>`;
                             this.ui.activeEventsContainer.appendChild(eventEl);
                         });
                     }
@@ -942,10 +957,10 @@
                             datasets: [
                                 { label: 'Historial', data: [], borderColor: '#3b82f6', borderWidth: 3, pointRadius: 0, tension: 0.4 }, 
                                 { label: 'Previsión', data: [], borderColor: '#60a5fa', borderWidth: 2, pointRadius: 0, tension: 0.4, borderDash: [5, 5] },
-                                { label: 'Media Móvil (24h)', data: [], borderColor: '#f97316', borderWidth: 2, pointRadius: 0, tension: 0.4, borderDash: [2, 2] }
+                                { label: 'Media Móvil (7 Días)', data: [], borderColor: '#f97316', borderWidth: 2, pointRadius: 0, tension: 0.4, borderDash: [2, 2] }
                             ] 
                         },
-                        options: { parsing: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'dd MMM' }, tooltipFormat: 'dd MMM, HH:mm' }, grid: { color: '#374151' }, ticks: { color: '#9ca3af', source: 'auto' } }, y: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' }, min: 0, max: 200 } }, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } } }
+                        options: { parsing: false, responsive: true, maintainAspectRatio: false, scales: { x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'dd MMM' }, tooltipFormat: 'dd MMM, HH:mm' }, grid: { color: '#374151' }, ticks: { color: '#9ca3af', source: 'auto' } }, y: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' }, min: 0, max: 200 } }, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
                     });
 
                     this.state.charts.alcohol = new Chart(this.ui.alcoholChart.getContext('2d'), {
@@ -982,32 +997,24 @@
                     const formulas = {
                         alcohol: { duration: 360, apply: p => { const q = p.cantidad || 1, u = 8 * q * factors.factorSexoAlcohol * factors.factorPeso, d = -16 * q * factors.factorSexoAlcohol * factors.factorPeso; if (minutesElapsed < 60) return minutesElapsed / 60 * u; if (minutesElapsed < 180) return u + (minutesElapsed - 60) / 120 * (d - u); if (minutesElapsed < 360) return d * (1 - (minutesElapsed - 180) / 180); return 0; } },
                         modafinilo: {
-                            duration: 900, // 15 horas total
+                            duration: 900, 
                             apply: (params) => {
                                 const dosageMultiplier = (params.cantidad || 100) / 100;
-                                const peak = 20 * dosageMultiplier * factors.factorPeso; // Pico reducido a +20
+                                const peak = 20 * dosageMultiplier * factors.factorPeso; 
                                 const peakNegative = -10 * dosageMultiplier * factors.factorPeso;
-                                const riseTime = 120; // 2h
-                                const plateauDuration = 420 * factors.factorSexoModafiniloDuracionMultiplier; // 7h de pico
-                                const fallToZeroTime = 180; // 3h (de 9 a 12h)
-                                const fallToNegativeTime = 180; // 3h (de 12 a 15h)
+                                const riseTime = 120; 
+                                const plateauDuration = 420 * factors.factorSexoModafiniloDuracionMultiplier; 
+                                const fallToZeroTime = 180; 
+                                const fallToNegativeTime = 180; 
                                 
-                                const plateauEnd = riseTime + plateauDuration; // 120 + 420 = 540 (9h)
-                                const zeroEnd = plateauEnd + fallToZeroTime; // 540 + 180 = 720 (12h)
-                                const negativePeakEnd = zeroEnd + fallToNegativeTime; // 720 + 180 = 900 (15h)
+                                const plateauEnd = riseTime + plateauDuration; 
+                                const zeroEnd = plateauEnd + fallToZeroTime; 
+                                const negativePeakEnd = zeroEnd + fallToNegativeTime; 
 
-                                if (minutesElapsed < riseTime) { // 0-2h: Subida
-                                    return (minutesElapsed / riseTime) * peak;
-                                }
-                                if (minutesElapsed < plateauEnd) { // 2h-9h: Meseta
-                                    return peak;
-                                }
-                                if (minutesElapsed < zeroEnd) { // 9h-12h: Decaimiento a 0
-                                    return peak * (1 - (minutesElapsed - plateauEnd) / fallToZeroTime);
-                                }
-                                if (minutesElapsed < negativePeakEnd) { // 12h-15h: Caída a -10 (nerviosismo)
-                                    return ((minutesElapsed - zeroEnd) / fallToNegativeTime) * peakNegative;
-                                }
+                                if (minutesElapsed < riseTime) return (minutesElapsed / riseTime) * peak;
+                                if (minutesElapsed < plateauEnd) return peak;
+                                if (minutesElapsed < zeroEnd) return peak * (1 - (minutesElapsed - plateauEnd) / fallToZeroTime);
+                                if (minutesElapsed < negativePeakEnd) return ((minutesElapsed - zeroEnd) / fallToNegativeTime) * peakNegative;
                                 return 0;
                             }
                         },
@@ -1057,7 +1064,7 @@
                             totalEffect += this.getEventEffect(event, factors, time).effect;
                         });
                         totalEffect += this.calculateSleepDebt(time);
-                        totalEffect += this.calculateFastingBonus(time); // Añadir bono de ayuno
+                        totalEffect += this.calculateFastingBonus(time);
                         allPoints.push({ x: time, y: Math.round(baseLevel + totalEffect) });
                     }
                     return allPoints;
@@ -1073,13 +1080,14 @@
                             forecastPoints.unshift(historicalPoints[historicalPoints.length-1]);
                         }
 
-                        // Calculate 24-hour moving average
                         const movingAveragePoints = [];
-                        const maWindow = 24 * 60 * 60 * 1000;
+                        const maWindow = 7 * 24 * 60 * 60 * 1000; // 7 días
+
                         for(let i = 0; i < allPoints.length; i++) {
                             const currentPoint = allPoints[i];
                             const windowStart = currentPoint.x - maWindow;
                             const pointsInWindow = allPoints.filter(p => p.x >= windowStart && p.x <= currentPoint.x);
+                            
                             if (pointsInWindow.length > 0) {
                                 const sum = pointsInWindow.reduce((acc, p) => acc + p.y, 0);
                                 movingAveragePoints.push({ x: currentPoint.x, y: sum / pointsInWindow.length });
@@ -1120,7 +1128,6 @@
                     this.state.charts.sexual.data.datasets[0].data = [sexualDays, totalDays - sexualDays];
                     this.state.charts.sexual.update('none');
                     
-                    // Sleep Quality Chart (Last 30 days)
                     const thirtyDaysAgo = new Date(now);
                     thirtyDaysAgo.setDate(now.getDate() - 30);
                     const sleepEvents = this.state.events.filter(e => e.type === 'sueño' && new Date(e.startTime) >= thirtyDaysAgo);
