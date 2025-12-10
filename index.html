@@ -2,7 +2,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v12.4 (Configurable)</title>
+    <title>Simulador Neuroquímico v12.5 (5 Días Historial + 2 Futuro)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -173,7 +173,7 @@
             </div>
 
             <div class="bg-base-200 p-4 md:p-6 rounded-2xl shadow-xl mb-6 h-96 relative">
-                <h3 class="text-2xl font-bold text-white mb-4">Evolución (7 días)</h3>
+                <h3 class="text-2xl font-bold text-white mb-4">Evolución (Historial 5 Días + Previsión 2 Días)</h3>
                 <canvas id="neuro-chart"></canvas>
             </div>
             
@@ -286,6 +286,7 @@
     </div>
     
     <script type="module">
+        // Importaciones de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, onSnapshot, query, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -466,7 +467,7 @@
                         } else {
                             this.state.userProfile = null;
                         }
-                    } catch (e) { console.error(e); }
+                    } catch (e) { console.error("Error al cargar perfil:", e); }
                 },
                 
                 async saveProfile(e) {
@@ -499,7 +500,7 @@
                             this.ui.profileSetup.classList.add('hidden');
                             this.update();
                         }
-                    } catch (error) { alert("Error al guardar el perfil."); }
+                    } catch (error) { console.error("Error al guardar perfil:", error); alert("Error al guardar el perfil."); }
                 },
                                 
                 async addEvent(type, params = {}, startTime = new Date()) {
@@ -549,7 +550,7 @@
                         await updateDoc(doc(db, `artifacts/${appId}/users/${userId}/profile/main`), {
                             dynamicBaseLevel: this.state.userProfile.dynamicBaseLevel
                         });
-                    } catch (error) { alert("Error al guardar el evento."); }
+                    } catch (error) { console.error("Error al guardar evento:", error); alert("Error al guardar el evento."); }
                 },
 
                 async deleteEvent(eventId) {
@@ -565,12 +566,12 @@
                              await updateDoc(doc(db, `artifacts/${appId}/users/${userId}/profile/main`), {
                                 dynamicBaseLevel: this.state.userProfile.dynamicBaseLevel
                             });
-                        } catch(e) { console.error(e); }
+                        } catch(e) { console.error("Error al revertir base level", e); }
                     }
 
                     try {
                         await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/events`, eventId));
-                    } catch (error) { alert("No se pudo borrar el evento."); }
+                    } catch (error) { console.error("Error al borrar evento:", error); alert("No se pudo borrar el evento."); }
                 },
 
                 async checkAndApplyRecovery() {
@@ -797,7 +798,6 @@
 
                     this.ui.activeEventsContainer.innerHTML = '';
                     
-                    // Aumentado a 50 para ver inactivos antiguos y poder borrarlos
                     const recentEvents = [...this.state.events]
                         .sort((a,b) => new Date(b.startTime) - new Date(a.startTime))
                         .slice(0, 50);
@@ -914,7 +914,6 @@
                         return "Análisis cancelado. Se necesita una API Key de Gemini para continuar.";
                     }
 
-                    // USAR EL PROMPT PERSONALIZADO
                     const savedPrompt = localStorage.getItem('customSystemPrompt');
                     const systemPrompt = savedPrompt ? savedPrompt : this.state.defaultPrompt;
 
@@ -970,6 +969,7 @@
                         type: 'line', 
                         data: { 
                             datasets: [
+                                // DATASETS ASOCIADOS A LOS EJES
                                 { label: 'Historial', data: [], borderColor: '#3b82f6', borderWidth: 3, pointRadius: 0, tension: 0.4, yAxisID: 'y' }, 
                                 { label: 'Previsión', data: [], borderColor: '#60a5fa', borderWidth: 2, pointRadius: 0, tension: 0.4, borderDash: [5, 5], yAxisID: 'y' },
                                 { label: 'Media Móvil (3 Días)', data: [], borderColor: '#f97316', borderWidth: 2, pointRadius: 0, tension: 0.4, borderDash: [2, 2], yAxisID: 'y1' }
@@ -981,8 +981,10 @@
                             maintainAspectRatio: false, 
                             scales: { 
                                 x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'dd MMM' }, tooltipFormat: 'dd MMM, HH:mm' }, grid: { color: '#374151' }, ticks: { color: '#9ca3af', source: 'auto' } }, 
-                                y: { type: 'linear', display: true, position: 'left', grid: { color: '#374151' }, ticks: { color: '#9ca3af' }, min: 50, max: 150 },
-                                y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#f97316' }, min: 80, max: 120 }
+                                // EJE Y (Izquierda - Neuro-Index)
+                                y: { type: 'linear', display: true, position: 'left', grid: { color: '#374151' }, ticks: { color: '#9ca3af' }, min: 50, max: 150, title: { display: true, text: 'Neuro-Índice (50-150)', color: '#9ca3af' } },
+                                // EJE Y1 (Derecha - Media Móvil)
+                                y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#f97316' }, min: 80, max: 120, title: { display: true, text: 'Media Móvil (80-120)', color: '#f97316' } }
                             }, 
                             plugins: { legend: { display: false }, tooltip: { enabled: false } } 
                         }
@@ -1013,12 +1015,10 @@
                     
                     const i={
                         alcohol:{title:"Consumo de Alcohol",inputs:`<label class="font-semibold">Nº de Bebidas</label><input type="number" id="param-cantidad" value="1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
-                        // CAMBIO VALOR POR DEFECTO MODAFINILO 50
                         modafinilo:{title:"Dosis de Modafinilo",inputs:`<label class="font-semibold">Dosis (mg)</label><input type="number" id="param-cantidad" value="50" step="50" min="50" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
                         ejercicio:{title:"Sesión de Ejercicio",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="30" step="10" min="10" class="w-full bg-base-300 rounded-lg px-4 py-3" required><label class="font-semibold">Intensidad</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.7">Baja</option><option value="1.0" selected>Media</option><option value="1.5">Alta</option></select>${e}`},
                         porno:{title:"Consumo de Pornografía",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="15" step="5" min="5" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
                         cafeina:{title:"Consumo de Cafeína",inputs:`<label class="font-semibold">Nº de Tazas</label><input type="number" id="param-cantidad" value="1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
-                        // CAMBIO VALOR POR DEFECTO L-TEANINA 400
                         ltheanine:{title:"Consumo de L-Teanina",inputs:`<label class="font-semibold">Dosis (mg)</label><input type="number" id="param-cantidad" value="400" step="100" min="50" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
                         lionsmane:{title:"Consumo de Lion's Mane",inputs:`<label class="font-semibold">Dosis (mg)</label><input type="number" id="param-cantidad" value="500" step="250" min="250" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
                         azucar:{title:"Consumo de Azúcar",inputs:`<label class="font-semibold">Intensidad</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.5">Baja</option><option value="1.0" selected>Media</option><option value="2.0">Alta</option></select>${e}`},
@@ -1107,13 +1107,17 @@
                     const factors = this.calculateFactors();
                     const baseLevel = this.state.userProfile.dynamicBaseLevel;
                     const now = new Date();
-                    const sevenDaysAgo = new Date(now);
-                    sevenDaysAgo.setDate(now.getDate() - 7);
-                    sevenDaysAgo.setHours(0, 0, 0, 0);
-                    const startDate = sevenDaysAgo.getTime();
-                    const oneDayForward = new Date(now);
-                    oneDayForward.setDate(now.getDate() + 1);
-                    const endDate = oneDayForward.getTime();
+                    
+                    // Ajuste de inicio: 5 DÍAS DE HISTORIAL
+                    const fiveDaysAgo = new Date(now);
+                    fiveDaysAgo.setDate(now.getDate() - 5);
+                    fiveDaysAgo.setHours(0, 0, 0, 0);
+                    const startDate = fiveDaysAgo.getTime();
+                    
+                    // Ajuste de fin: 2 DÍAS DE PREVISIÓN
+                    const twoDaysForward = new Date(now);
+                    twoDaysForward.setDate(now.getDate() + 2);
+                    const endDate = twoDaysForward.getTime();
                     
                     const allPoints = [];
                     const interval = 15 * 60 * 1000; 
