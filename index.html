@@ -1,8 +1,9 @@
+<!DOCTYPE html>
 <html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v12.6 (5 Días Historial + 2 Futuro)</title>
+    <title>Simulador Neuroquímico v13.0 (Protocolo Sueño Avanzado)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -93,6 +94,53 @@
                     <div class="flex gap-4">
                         <button type="button" id="cancel-event-btn" class="w-full bg-base-300 hover:bg-gray-600 text-gray-300 font-bold py-3">Cancelar</button>
                         <button type="submit" class="w-full bg-accent hover:bg-blue-500 text-white font-bold py-3">Añadir</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="sleep-modal" class="fixed inset-0 z-40 items-center justify-center p-4 hidden modal-backdrop bg-black bg-opacity-75">
+            <div class="bg-base-200 rounded-2xl shadow-2xl p-8 w-full max-w-md modal-content transform scale-95 border border-indigo-500">
+                <h2 class="text-3xl font-bold text-white mb-2">😴 Registrar Sueño</h2>
+                <p class="text-sm text-gray-400 mb-6">Protocolo de recuperación y ayudas.</p>
+                <form id="sleep-form">
+                    <div class="space-y-4 mb-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-300 mb-1 font-semibold text-sm">Fecha Inicio</label>
+                                <input type="date" id="sleep-date" class="w-full bg-base-300 rounded-lg px-3 py-2 text-sm" required>
+                            </div>
+                            <div>
+                                <label class="block text-gray-300 mb-1 font-semibold text-sm">Hora Inicio</label>
+                                <input type="time" id="sleep-time" class="w-full bg-base-300 rounded-lg px-3 py-2 text-sm" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-1 font-semibold">Horas Dormidas</label>
+                            <input type="number" id="sleep-duration" step="0.5" value="8" min="0" class="w-full bg-base-300 rounded-lg px-4 py-3 font-bold text-white" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-1 font-semibold">Calidad Subjetiva</label>
+                            <select id="sleep-quality" class="w-full bg-base-300 rounded-lg px-4 py-3 text-white">
+                                <option value="0.5">Mala (Fragmentado)</option>
+                                <option value="1.0" selected>Regular (Normal)</option>
+                                <option value="1.5">Buena (Reparador)</option>
+                            </select>
+                        </div>
+                        <div class="p-3 bg-base-300 rounded-lg border border-gray-600">
+                            <label class="block text-accent mb-2 font-bold text-sm uppercase">💊 Ayudas / Suplementos</label>
+                            <select id="sleep-aid" class="w-full bg-base-200 rounded-lg px-4 py-3 text-white border border-gray-500 focus:border-accent">
+                                <option value="none">⚪ Ninguna (Natural)</option>
+                                <option value="magnesio">🟢 Magnesio / Glicina (+ Bonus Base)</option>
+                                <option value="melatonina">🔵 Melatonina (Seguro Calidad)</option>
+                                <option value="dormidina">🔴 Dormidina / Fármaco (Resaca)</option>
+                            </select>
+                            <p id="sleep-aid-desc" class="text-xs text-gray-400 mt-2 italic">Selecciona para ver el efecto.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <button type="button" id="cancel-sleep-btn" class="w-full bg-base-300 hover:bg-gray-600 text-gray-300 font-bold py-3">Cancelar</button>
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg">Guardar Sueño</button>
                     </div>
                 </form>
             </div>
@@ -229,7 +277,8 @@
                 <div class="bg-base-200 p-6 rounded-2xl shadow-xl">
                     <h3 class="text-2xl font-bold text-white mb-4">Añadir Evento</h3>
                     <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                        <button data-event="sueño" class="event-btn bg-indigo-600 hover:bg-indigo-700 col-span-1 lg:col-span-3" data-tooltip="Efecto: Resetea el índice a la Línea Base.&#x000A;La calidad afecta la Línea Base a largo plazo.">Sueño</button>
+                        <button data-event="sueño" class="event-btn bg-indigo-600 hover:bg-indigo-700 col-span-1 lg:col-span-3 border border-indigo-400 shadow-[0_0_10px_rgba(79,70,229,0.3)]" data-tooltip="Nuevo Protocolo: Natural vs Farmacológico">😴 Sueño (Protocolo)</button>
+                        
                         <button data-event="comida" class="event-btn bg-yellow-600 hover:bg-yellow-700 col-span-1 lg:col-span-3" data-tooltip="Efecto: Resetea el reloj de ayuno.&#x000A;El ayuno (14-24h) da un bono de alerta.">Comida</button>
                         <button data-event="hrv" class="event-btn bg-cyan-600 hover:bg-cyan-700" data-tooltip="Efecto: Modificador temporal según valor.&#x000A;Duración: 3h.&#x000A;Ej: 80ms = +7.5.">HRV</button>
                         <button data-event="ejercicio" class="event-btn bg-emerald-500 hover:bg-emerald-600" data-tooltip="Efecto: Pico positivo según intensidad.&#x000A;Duración: Sesión + 2h.&#x000A;Ej: 30min medio = +10.">Ejercicio</button>
@@ -327,6 +376,13 @@
                         eventForm: document.getElementById('event-form'),
                         eventInputsContainer: document.getElementById('event-inputs-container'),
                         cancelEventBtn: document.getElementById('cancel-event-btn'),
+                        // ELEMENTOS DEL NUEVO MODAL DE SUEÑO
+                        sleepModal: document.getElementById('sleep-modal'),
+                        sleepForm: document.getElementById('sleep-form'),
+                        cancelSleepBtn: document.getElementById('cancel-sleep-btn'),
+                        sleepAidDesc: document.getElementById('sleep-aid-desc'),
+                        sleepAidSelect: document.getElementById('sleep-aid'),
+                        
                         sensacionSlider: document.getElementById('sensacion-slider'),
                         sensacionValue: document.getElementById('sensacion-value'),
                         addSensacionBtn: document.getElementById('add-sensacion-btn'),
@@ -507,10 +563,17 @@
                     const { db } = this.state.firebase;
                     const { userId, appId } = this.state;
                     
+                    // LÓGICA DE MODIFICACIÓN DE BASE LEVEL (SUEÑO)
                     if (type === 'sueño') {
                         const qualityMap = { 1.5: 0.1, 1.0: 0.05, 0.5: -0.2 }; 
                         let qualityFactor = qualityMap[params.intensidad] || 0;
                         if (params.cantidad < 6) qualityFactor -= 0.15;
+                        
+                        // BONUS MAGNESIO
+                        if (params.ayuda === 'magnesio') {
+                            qualityFactor += 0.05;
+                        }
+                        
                         this.state.userProfile.dynamicBaseLevel += qualityFactor;
                     }
 
@@ -637,6 +700,47 @@
                     const eventStartTime = new Date(`${dateValue}T${timeValue}`);
                     this.addEvent(this.state.currentEventType, params, eventStartTime);
                     this.closeEventModal();
+                },
+                
+                // NUEVO: MANEJADOR ESPECÍFICO DEL PROTOCOLO DE SUEÑO
+                handleSleepSubmit(e) {
+                    e.preventDefault();
+                    
+                    const dateValue = document.getElementById('sleep-date').value;
+                    const timeValue = document.getElementById('sleep-time').value;
+                    const startTime = new Date(`${dateValue}T${timeValue}`);
+                    const duration = parseFloat(document.getElementById('sleep-duration').value);
+                    const rawQuality = parseFloat(document.getElementById('sleep-quality').value);
+                    const aid = document.getElementById('sleep-aid').value;
+
+                    let finalQuality = rawQuality;
+
+                    // Lógica del Protocolo
+                    if (aid === 'melatonina' && rawQuality === 0.5) {
+                        // Seguro de Melatonina: Evita que sea Mala
+                        finalQuality = 1.0; 
+                    } else if (aid === 'dormidina') {
+                        // Dormidina fuerza recuperación máxima (simula buena calidad base)
+                        finalQuality = 1.5;
+                    }
+
+                    const params = {
+                        cantidad: duration,
+                        intensidad: finalQuality,
+                        ayuda: aid // Se pasa para que addEvent aplique bonus de magnesio
+                    };
+
+                    // 1. Añadir el evento de sueño principal
+                    this.addEvent('sueño', params, startTime);
+
+                    // 2. Si es Dormidina, inyectar el evento de Resaca (oculto en UI pero activo en fórmula)
+                    if (aid === 'dormidina') {
+                        // Calcular hora de despertar
+                        const wakeTime = new Date(startTime.getTime() + (duration * 60 * 60 * 1000));
+                        this.addEvent('resaca_dormidina', { cantidad: 15 }, wakeTime);
+                    }
+
+                    this.closeSleepModal();
                 },
                 
                 calculateSleepDebt(now) {
@@ -809,6 +913,9 @@
                         const factors = this.calculateFactors();
 
                         recentEvents.forEach(event => {
+                            // Si es un evento oculto de resaca, ponerle nombre amigable
+                            const displayName = event.type === 'resaca_dormidina' ? 'Resaca (Dormidina)' : event.type;
+                            
                             const effectInfo = this.getEventEffect(event, factors, now);
                             const isActive = !effectInfo.finished;
 
@@ -833,16 +940,21 @@
                                 const text = qualityMap[event.params.intensidad] || intensityMap[event.params.intensidad] || '';
                                 details += ` (${text})`;
                             }
+                            // Mostrar Ayuda si existe
+                            if (event.params.ayuda && event.params.ayuda !== 'none') {
+                                details += ` + ${event.params.ayuda.charAt(0).toUpperCase() + event.params.ayuda.slice(1)}`;
+                            }
+
                             const timeSince = (Date.now() - new Date(event.startTime).getTime()) / 60000;
                             const timeString = timeSince < 60 ? `${Math.round(timeSince)}m` : `${(timeSince/60).toFixed(1)}h`;
                             
                             eventEl.innerHTML = `
                                 <div>
                                     <div class="flex items-center gap-2">
-                                        <span class="font-bold capitalize">${(event.type || '').replace('cafeina', 'Cafeína').replace('ltheanine', 'L-Teanina').replace('lionsmane', 'Melena de León')}</span>
+                                        <span class="font-bold capitalize">${displayName.replace('cafeina', 'Cafeína').replace('ltheanine', 'L-Teanina').replace('lionsmane', 'Melena de León')}</span>
                                         ${!isActive ? '<span class="text-xs bg-gray-700 px-2 rounded">Inactivo</span>' : ''}
                                     </div>
-                                    <span class="text-sm text-gray-400">hace ${timeString}</span>
+                                    <span class="text-sm text-gray-400">${details} - hace ${timeString}</span>
                                 </div> 
                                 <div class="flex items-center gap-3">
                                     <button class="delete-btn text-gray-500 hover:text-red-500 p-2 rounded-full hover:bg-base-200 transition" data-id="${event.id}" title="Borrar y recalcular">
@@ -1018,15 +1130,14 @@
                         ejercicio:{title:"Sesión de Ejercicio",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="30" step="10" min="10" class="w-full bg-base-300 rounded-lg px-4 py-3" required><label class="font-semibold">Intensidad</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.7">Baja</option><option value="1.0" selected>Media</option><option value="1.5">Alta</option></select>${e}`},
                         porno:{title:"Consumo de Pornografía",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="15" step="5" min="5" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
                         cafeina:{title:"Consumo de Cafeína",inputs:`<label class="font-semibold">Nº de Tazas</label><input type="number" id="param-cantidad" value="1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
-                        // INICIO CAMBIO SOLICITADO
                         ltheanine:{title:"Consumo de L-Teanina",inputs:`<label class="font-semibold">Dosis (mg)</label><input type="number" id="param-cantidad" value="500" step="50" min="50" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
-                        // FIN CAMBIO SOLICITADO
                         lionsmane:{title:"Consumo de Lion's Mane",inputs:`<label class="font-semibold">Dosis (mg)</label><input type="number" id="param-cantidad" value="500" step="250" min="250" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
                         azucar:{title:"Consumo de Azúcar",inputs:`<label class="font-semibold">Intensidad</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.5">Baja</option><option value="1.0" selected>Media</option><option value="2.0">Alta</option></select>${e}`},
-                        sueño:{title:"Registro de Sueño",inputs:`<label class="font-semibold">Horas Dormidas</label><input type="number" id="param-cantidad" step="0.5" value="8" min="0" class="w-full bg-base-300 rounded-lg px-4 py-3" required><label class="font-semibold">Calidad del Sueño</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.5">Mala</option><option value="1.0" selected>Regular</option><option value="1.5">Buena</option></select>${e}`},
                         hrv:{title:"Registro de HRV",inputs:`<label class="font-semibold">Valor HRV (ms)</label><input type="number" id="param-cantidad" value="55" min="10" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
                         orgasmo:{title:"Registro de Orgasmo",inputs:e},
-                        comida:{title:"Registrar Comida",inputs:e}
+                        comida:{title:"Registrar Comida",inputs:e},
+                        // El sueño se maneja en su propio modal ahora, pero dejamos esto por seguridad
+                        sueño:{title:"Registro de Sueño",inputs:`<label class="font-semibold">Horas Dormidas</label><input type="number" id="param-cantidad" step="0.5" value="8" min="0" class="w-full bg-base-300 rounded-lg px-4 py-3" required><label class="font-semibold">Calidad del Sueño</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.5">Mala</option><option value="1.0" selected>Regular</option><option value="1.5">Buena</option></select>${e}`},
                     };
                     
                     this.ui.eventModalTitle.textContent=i[t].title;
@@ -1038,6 +1149,25 @@
                     setTimeout(()=>this.ui.eventModal.querySelector(".modal-content").classList.remove("scale-95"),10);
                 },
                 
+                openSleepModal() {
+                    const now = new Date();
+                    document.getElementById("sleep-date").valueAsDate = now;
+                    document.getElementById("sleep-time").value = now.toTimeString().slice(0, 5);
+                    
+                    this.ui.sleepModal.classList.add("flex");
+                    this.ui.sleepModal.classList.remove("hidden");
+                    setTimeout(() => this.ui.sleepModal.querySelector(".modal-content").classList.remove("scale-95"), 10);
+                },
+
+                closeSleepModal() {
+                    this.ui.sleepModal.querySelector(".modal-content").classList.add("scale-95");
+                    setTimeout(() => {
+                        this.ui.sleepModal.classList.add("hidden");
+                        this.ui.sleepModal.classList.remove("flex");
+                        this.ui.sleepForm.reset();
+                    }, 300);
+                },
+
                 closeEventModal(){this.ui.eventModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.ui.eventModal.classList.add("hidden"),this.ui.eventModal.classList.remove("flex")},300)},
                 
                 calculateFactors(){const{sexo:t,peso:e}=this.state.userProfile,i=Math.max(1,e);return{factorSexoAlcohol:"Mujer"===t?1.3:1,factorSexoModafiniloDuracionMultiplier:"Mujer"===t?1.2:1,factorPeso:75/i}},
@@ -1075,6 +1205,7 @@
                         ejercicio: { duration: p => (p.cantidad || 30) + 120, apply: p => { const d = p.cantidad || 30, i = p.intensidad || 1, pk = 10 * i * factors.factorPeso, pD = Math.max(0, d - 15); if (minutesElapsed < 15) return minutesElapsed / 15 * pk; if (minutesElapsed < 15 + pD) return pk; if (minutesElapsed < 15 + pD + 120) return pk * (1 - (minutesElapsed - 15 - pD) / 120); return 0; } }, 
                         porno: { duration: p => (p.cantidad || 15) + 90, apply: p => { const d = p.cantidad || 15, u = 5 + d / 10, dn = -10; if (minutesElapsed < d) return minutesElapsed / d * u; if (minutesElapsed < d + 20) return u + (minutesElapsed - d) / 20 * (dn - u); if (minutesElapsed < d + 90) return dn * (1 - (minutesElapsed - d - 20) / 70); return 0; } }, 
                         cafeina: { duration: 240, apply: p => { const q = p.cantidad || 1, u = 20 * q, d = -5 * q; if (minutesElapsed < 30) return minutesElapsed / 30 * u; if (minutesElapsed < 90) return u + (minutesElapsed - 30) / 60 * (d - u); if (minutesElapsed < 240) return d * (1 - (minutesElapsed - 90) / 150); return 0; } }, 
+                        
                         ltheanine: { duration: 240, apply: p => { 
                             const dose = (p.cantidad || 200) / 200; 
                             const peak = 10 * dose;
@@ -1083,13 +1214,27 @@
                             if (minutesElapsed < 240) return peak * (1 - (minutesElapsed - 210) / 30); 
                             return 0; 
                         }}, 
+                        
                         lionsmane: { duration: 0, apply: p => 0 },
                         azucar: { duration: 120, apply: p => { const i = p.intensidad || 1, u = 25 * i, d = -15 * i; if (minutesElapsed < 15) return minutesElapsed / 15 * u; if (minutesElapsed < 45) return u + (minutesElapsed - 15) / 30 * (d - u); if (minutesElapsed < 120) return d * (1 - (minutesElapsed - 45) / 75); return 0; } }, 
                         sensacion: { duration: 60, apply: p => { const v = p.cantidad, pk = (v - 5) * 2.5; return minutesElapsed < 60 ? pk * (1 - minutesElapsed / 60) : 0; } }, 
                         sueño: { duration: 0, apply: p => 0 }, 
                         comida: { duration: 0, apply: p => 0 }, 
                         hrv: { duration: 180, apply: p => { const e = (p.cantidad - 55) * 0.3; return minutesElapsed < 180 ? e * (1 - minutesElapsed / 180) : 0; } }, 
-                        orgasmo: { duration: 150, apply: () => { const u = 40, d = -20; if (minutesElapsed < 3) return u; if (minutesElapsed < 15) return d; if (minutesElapsed < 150) return d * (1 - (minutesElapsed - 15) / 135); return 0; } } 
+                        orgasmo: { duration: 150, apply: () => { const u = 40, d = -20; if (minutesElapsed < 3) return u; if (minutesElapsed < 15) return d; if (minutesElapsed < 150) return d * (1 - (minutesElapsed - 15) / 135); return 0; } },
+                        
+                        // LÓGICA DE RESACA DORMIDINA (NUEVO)
+                        // Efecto: -15 inicial, sube a 0 linealmente en 4 horas (240 min)
+                        resaca_dormidina: { 
+                            duration: 240, 
+                            apply: () => {
+                                const startPenalty = -15;
+                                if (minutesElapsed < 240) {
+                                    return startPenalty * (1 - (minutesElapsed / 240));
+                                }
+                                return 0;
+                            }
+                        }
                     };
                     const formula = formulas[event.type];
                     if (formula) {
@@ -1214,9 +1359,35 @@
                 attachEventListeners(){
                     this.ui.profileForm.addEventListener("submit",t=>this.saveProfile(t));
                     this.ui.editProfileBtn.addEventListener("click",()=>this.ui.profileSetup.classList.remove("hidden"));
-                    document.querySelectorAll(".event-btn").forEach(t=>t.addEventListener("click",()=>this.openEventModal(t.dataset.event)));
+                    
+                    // Modificación: Interceptar botón de sueño
+                    document.querySelectorAll(".event-btn").forEach(t => t.addEventListener("click", () => {
+                        if (t.dataset.event === 'sueño') {
+                            this.openSleepModal();
+                        } else {
+                            this.openEventModal(t.dataset.event);
+                        }
+                    }));
+                    
                     this.ui.eventForm.addEventListener("submit",t=>this.handleEventSubmit(t));
                     this.ui.cancelEventBtn.addEventListener("click",()=>this.closeEventModal());
+                    
+                    // Nuevos listeners de sueño
+                    this.ui.sleepForm.addEventListener("submit", t => this.handleSleepSubmit(t));
+                    this.ui.cancelSleepBtn.addEventListener("click", () => this.closeSleepModal());
+                    
+                    // Listener descripción ayudas
+                    this.ui.sleepAidSelect.addEventListener("change", (e) => {
+                        const val = e.target.value;
+                        const desc = {
+                            'none': 'Cálculo estándar basado en horas y calidad.',
+                            'magnesio': 'Añade +0.05 a la Línea Base por optimización.',
+                            'melatonina': 'Protege la calidad: Convierte "Mala" en "Regular".',
+                            'dormidina': 'Recuperación MÁXIMA de base, pero causa RESACA (-15) al despertar.'
+                        };
+                        this.ui.sleepAidDesc.textContent = desc[val];
+                    });
+
                     this.ui.sensacionSlider.addEventListener("input",t=>{this.ui.sensacionValue.textContent=t.target.value});
                     this.ui.addSensacionBtn.addEventListener("click",()=>{const t=parseFloat(this.ui.sensacionSlider.value);this.addEvent("sensacion",{cantidad:t},new Date),this.ui.sensacionSlider.value=5,this.ui.sensacionValue.textContent="5"});
                     this.ui.analyzeGeminiBtn.addEventListener("click",()=>this.handleGeminiAnalysis());
@@ -1224,7 +1395,6 @@
                     this.ui.apiKeyForm.addEventListener("submit", e => { e.preventDefault(); const key = this.ui.apiKeyInput.value; if(key) localStorage.setItem('geminiApiKey_v10', key); this.ui.apiKeyModal.classList.add('hidden'); this.ui.apiKeyModal.classList.remove('flex'); this.handleGeminiAnalysis(); }); 
                     this.ui.cancelApiKeyBtn.addEventListener("click", () => {this.ui.apiKeyModal.classList.add('hidden'); this.ui.apiKeyModal.classList.remove('flex');});
                     
-                    // PROMPT LISTENERS
                     this.ui.configPromptBtn.addEventListener("click", () => {
                          const saved = localStorage.getItem('customSystemPrompt');
                          this.ui.systemPromptInput.value = saved ? saved : this.state.defaultPrompt;
@@ -1251,4 +1421,4 @@
         });
     </script>
 </body>
-</html>
+    </html>
