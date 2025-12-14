@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v13.0 (Protocolo Sueño Avanzado)</title>
+    <title>Simulador Neuroquímico v13.1 (Protocolo Sueño + Suplementos Completos)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -286,7 +286,9 @@
                         <button data-event="modafinilo" class="event-btn bg-sky-500 hover:bg-sky-600" data-tooltip="Efecto: +20 por 100mg. Pico 7h, decae a 12h, negativo 12-15h.&#x000A;Ajustado por sexo y peso.">Modafinilo</button>
                         <button data-event="cafeina" class="event-btn bg-yellow-700 hover:bg-yellow-800" data-tooltip="Efecto: Pico +20/taza, Bajón -5/taza.&#x0F;Duración: 4h.">Cafeína</button>
                         
-                        <button data-event="ltheanine" class="event-btn bg-violet-500 hover:bg-violet-600" data-tooltip="Efecto: Pico +10 estable, Sin Bajón.&#x000A;Ideal para combinar con cafeína.">L-Teanina</button>
+                        <button data-event="ltheanine" class="event-btn bg-violet-500 hover:bg-violet-600" data-tooltip="Efecto: Pico +10 estable. Calma sin sedar.&#x000A;Ideal para combinar con cafeína.">L-Teanina</button>
+                        <button data-event="ltirosina" class="event-btn bg-fuchsia-500 hover:bg-fuchsia-600" data-tooltip="Efecto: Precursor Dopamina. Pico +15.&#x000A;Mejora foco y estrés. Duración 4h.">L-Tirosina</button>
+                        <button data-event="taurina" class="event-btn bg-pink-500 hover:bg-pink-600" data-tooltip="Efecto: GABAérgico suave. Pico +8.&#x000A;Estabilizador. Duración 4h.">Taurina</button>
                         <button data-event="lionsmane" class="event-btn bg-amber-600 hover:bg-amber-700" data-tooltip="Efecto: Neuro-Reparación.&#x000A;Sube la Línea Base +0.1 permanentemente.">Lion's Mane</button>
                         
                         <button data-event="azucar" class="event-btn bg-gray-400 hover:bg-gray-500" data-tooltip="Efecto: Pico +25, Bajón -15 (medio).&#x000A;Duración: 2h.">Azúcar</button>
@@ -913,7 +915,6 @@
                         const factors = this.calculateFactors();
 
                         recentEvents.forEach(event => {
-                            // Si es un evento oculto de resaca, ponerle nombre amigable
                             const displayName = event.type === 'resaca_dormidina' ? 'Resaca (Dormidina)' : event.type;
                             
                             const effectInfo = this.getEventEffect(event, factors, now);
@@ -926,7 +927,7 @@
                             let details = '';
                             if (event.params.cantidad) {
                                 let unit = '';
-                                if (['modafinilo', 'ltheanine', 'lionsmane'].includes(event.type)) unit = 'mg';
+                                if (['modafinilo', 'ltheanine', 'lionsmane', 'ltirosina', 'taurina'].includes(event.type)) unit = 'mg';
                                 else if (['ejercicio', 'porno', 'masturbacion'].includes(event.type)) unit = 'min';
                                 else if (event.type === 'alcohol') unit = 'uds';
                                 else if (event.type === 'sueño') unit = 'h';
@@ -940,7 +941,6 @@
                                 const text = qualityMap[event.params.intensidad] || intensityMap[event.params.intensidad] || '';
                                 details += ` (${text})`;
                             }
-                            // Mostrar Ayuda si existe
                             if (event.params.ayuda && event.params.ayuda !== 'none') {
                                 details += ` + ${event.params.ayuda.charAt(0).toUpperCase() + event.params.ayuda.slice(1)}`;
                             }
@@ -951,7 +951,7 @@
                             eventEl.innerHTML = `
                                 <div>
                                     <div class="flex items-center gap-2">
-                                        <span class="font-bold capitalize">${displayName.replace('cafeina', 'Cafeína').replace('ltheanine', 'L-Teanina').replace('lionsmane', 'Melena de León')}</span>
+                                        <span class="font-bold capitalize">${displayName.replace('cafeina', 'Cafeína').replace('ltheanine', 'L-Teanina').replace('ltirosina', 'L-Tirosina').replace('lionsmane', 'Melena de León')}</span>
                                         ${!isActive ? '<span class="text-xs bg-gray-700 px-2 rounded">Inactivo</span>' : ''}
                                     </div>
                                     <span class="text-sm text-gray-400">${details} - hace ${timeString}</span>
@@ -1130,13 +1130,17 @@
                         ejercicio:{title:"Sesión de Ejercicio",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="30" step="10" min="10" class="w-full bg-base-300 rounded-lg px-4 py-3" required><label class="font-semibold">Intensidad</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.7">Baja</option><option value="1.0" selected>Media</option><option value="1.5">Alta</option></select>${e}`},
                         porno:{title:"Consumo de Pornografía",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="15" step="5" min="5" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
                         cafeina:{title:"Consumo de Cafeína",inputs:`<label class="font-semibold">Nº de Tazas</label><input type="number" id="param-cantidad" value="1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
+                        
+                        // SUPLEMENTOS
                         ltheanine:{title:"Consumo de L-Teanina",inputs:`<label class="font-semibold">Dosis (mg)</label><input type="number" id="param-cantidad" value="500" step="50" min="50" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
+                        ltirosina:{title:"Consumo de L-Tirosina",inputs:`<label class="font-semibold">Dosis (mg)</label><input type="number" id="param-cantidad" value="500" step="500" min="500" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
+                        taurina:{title:"Consumo de Taurina",inputs:`<label class="font-semibold">Dosis (mg)</label><input type="number" id="param-cantidad" value="1000" step="500" min="500" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
+                        
                         lionsmane:{title:"Consumo de Lion's Mane",inputs:`<label class="font-semibold">Dosis (mg)</label><input type="number" id="param-cantidad" value="500" step="250" min="250" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
                         azucar:{title:"Consumo de Azúcar",inputs:`<label class="font-semibold">Intensidad</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.5">Baja</option><option value="1.0" selected>Media</option><option value="2.0">Alta</option></select>${e}`},
                         hrv:{title:"Registro de HRV",inputs:`<label class="font-semibold">Valor HRV (ms)</label><input type="number" id="param-cantidad" value="55" min="10" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
                         orgasmo:{title:"Registro de Orgasmo",inputs:e},
                         comida:{title:"Registrar Comida",inputs:e},
-                        // El sueño se maneja en su propio modal ahora, pero dejamos esto por seguridad
                         sueño:{title:"Registro de Sueño",inputs:`<label class="font-semibold">Horas Dormidas</label><input type="number" id="param-cantidad" step="0.5" value="8" min="0" class="w-full bg-base-300 rounded-lg px-4 py-3" required><label class="font-semibold">Calidad del Sueño</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.5">Mala</option><option value="1.0" selected>Regular</option><option value="1.5">Buena</option></select>${e}`},
                     };
                     
@@ -1215,6 +1219,26 @@
                             return 0; 
                         }}, 
                         
+                        // L-Tirosina: Precursor Dopamina (Pico medio, estable, sin crash)
+                        ltirosina: { duration: 240, apply: p => { 
+                            const dose = (p.cantidad || 500) / 500; 
+                            const peak = 15 * dose;
+                            if (minutesElapsed < 45) return minutesElapsed / 45 * peak; 
+                            if (minutesElapsed < 180) return peak; 
+                            if (minutesElapsed < 240) return peak * (1 - (minutesElapsed - 180) / 60); 
+                            return 0; 
+                        }}, 
+                        
+                        // Taurina: GABA suave (Pico bajo, estable)
+                        taurina: { duration: 240, apply: p => { 
+                            const dose = (p.cantidad || 1000) / 1000; 
+                            const peak = 8 * dose;
+                            if (minutesElapsed < 30) return minutesElapsed / 30 * peak; 
+                            if (minutesElapsed < 180) return peak; 
+                            if (minutesElapsed < 240) return peak * (1 - (minutesElapsed - 180) / 60); 
+                            return 0; 
+                        }}, 
+                        
                         lionsmane: { duration: 0, apply: p => 0 },
                         azucar: { duration: 120, apply: p => { const i = p.intensidad || 1, u = 25 * i, d = -15 * i; if (minutesElapsed < 15) return minutesElapsed / 15 * u; if (minutesElapsed < 45) return u + (minutesElapsed - 15) / 30 * (d - u); if (minutesElapsed < 120) return d * (1 - (minutesElapsed - 45) / 75); return 0; } }, 
                         sensacion: { duration: 60, apply: p => { const v = p.cantidad, pk = (v - 5) * 2.5; return minutesElapsed < 60 ? pk * (1 - minutesElapsed / 60) : 0; } }, 
@@ -1223,8 +1247,7 @@
                         hrv: { duration: 180, apply: p => { const e = (p.cantidad - 55) * 0.3; return minutesElapsed < 180 ? e * (1 - minutesElapsed / 180) : 0; } }, 
                         orgasmo: { duration: 150, apply: () => { const u = 40, d = -20; if (minutesElapsed < 3) return u; if (minutesElapsed < 15) return d; if (minutesElapsed < 150) return d * (1 - (minutesElapsed - 15) / 135); return 0; } },
                         
-                        // LÓGICA DE RESACA DORMIDINA (NUEVO)
-                        // Efecto: -15 inicial, sube a 0 linealmente en 4 horas (240 min)
+                        // LÓGICA DE RESACA DORMIDINA
                         resaca_dormidina: { 
                             duration: 240, 
                             apply: () => {
@@ -1421,4 +1444,4 @@
         });
     </script>
 </body>
-    </html>
+</html>
