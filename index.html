@@ -2,7 +2,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador Neuroquímico v12.6 (5 Días Historial + 2 Futuro)</title>
+    <title>Simulador Neuroquímico v13.0 (Sleep & Stack Completo)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -54,7 +54,8 @@
             font-size: 0.875rem; line-height: 1.25rem;
             white-space: pre-line; width: 280px; text-align: left;
             pointer-events: none; opacity: 0;
-            transition: opacity 0.2s, transform 0.2s; z-index: 10;
+            transition: opacity 0.2s, transform 0.2s; z-index: 50;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
         [data-tooltip]:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
         #gemini-response { max-height: 20rem; overflow-y: auto; padding-right: 0.5rem; }
@@ -67,20 +68,19 @@
         <div id="profile-setup" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 hidden">
             <div class="bg-base-200 rounded-2xl shadow-2xl p-8 w-full max-w-md">
                 <h2 class="text-3xl font-bold text-white mb-2">Configura tu Perfil</h2>
-                <p class="text-gray-400 mb-6">Tus datos se guardarán en la nube de Firebase.</p>
                 <form id="profile-form">
                     <div class="mb-4">
-                        <label for="sexo" class="block text-gray-300 mb-2 font-semibold">Sexo Biológico</label>
+                        <label for="sexo" class="block text-gray-300 mb-2 font-semibold">Sexo</label>
                         <select id="sexo" class="w-full bg-base-300 border border-gray-600 rounded-lg px-4 py-3 text-white" required>
                             <option value="Hombre">Hombre</option>
                             <option value="Mujer">Mujer</option>
                         </select>
                     </div>
                     <div class="mb-6">
-                        <label for="peso" class="block text-gray-300 mb-2 font-semibold">Peso Corporal (kg)</label>
-                        <input type="number" id="peso" step="0.1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3 text-white" placeholder="Ej: 75" required>
+                        <label for="peso" class="block text-gray-300 mb-2 font-semibold">Peso (kg)</label>
+                        <input type="number" id="peso" step="0.1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3 text-white" placeholder="75" required>
                     </div>
-                    <button type="submit" class="w-full bg-accent hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-lg">Guardar Perfil</button>
+                    <button type="submit" class="w-full bg-accent hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-lg">Guardar</button>
                 </form>
             </div>
         </div>
@@ -97,29 +97,94 @@
                 </form>
             </div>
         </div>
-        
+
+        <div id="supplements-modal" class="fixed inset-0 z-40 items-center justify-center p-4 hidden modal-backdrop bg-black bg-opacity-75">
+            <div class="bg-base-200 rounded-2xl shadow-2xl p-8 w-full max-w-lg modal-content transform scale-95">
+                <h2 class="text-3xl font-bold text-white mb-6">💊 Tu Stack</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <button data-event="ltheanine" class="supp-btn bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 rounded-lg" data-tooltip="Foco calmado (+10). Ideal con café.">L-Teanina</button>
+                    <button data-event="ltirosina" class="supp-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg" data-tooltip="Precursor Dopamina (+12). Combustible mental.">L-Tirosina</button>
+                    <button data-event="taurina" class="supp-btn bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg" data-tooltip="Estabilizador (+8). Reduce jitter.">Taurina</button>
+                    <button data-event="lionsmane" class="supp-btn bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-lg" data-tooltip="Neurogénesis. +0.1 a la Base permanente.">Lion's Mane</button>
+                    <button data-event="magnesio" class="supp-btn bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-lg" data-tooltip="Relajación física (+5). Si es de noche ayuda al sueño.">Magnesio</button>
+                    <button data-event="glicina" class="supp-btn bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 rounded-lg" data-tooltip="Baja temperatura corporal (+5). Mejora sueño profundo.">Glicina</button>
+                </div>
+                <button type="button" id="close-supp-btn" class="w-full mt-6 bg-base-300 hover:bg-gray-600 text-gray-300 font-bold py-3">Cerrar</button>
+            </div>
+        </div>
+
+        <div id="sleep-wizard-modal" class="fixed inset-0 z-40 items-center justify-center p-4 hidden modal-backdrop bg-black bg-opacity-75">
+            <div class="bg-base-200 rounded-2xl shadow-2xl p-8 w-full max-w-md modal-content transform scale-95">
+                <h2 class="text-3xl font-bold text-white mb-4">😴 Protocolo de Sueño</h2>
+                <form id="sleep-wizard-form">
+                    <div class="space-y-4 mb-6">
+                        <div>
+                            <label class="block text-gray-300 mb-1 font-semibold">Horas Dormidas</label>
+                            <input type="number" id="sleep-hours" step="0.5" value="7.5" min="0" class="w-full bg-base-300 rounded-lg px-4 py-3 text-white" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-1 font-semibold">Calidad Subjetiva</label>
+                            <select id="sleep-quality" class="w-full bg-base-300 rounded-lg px-4 py-3 text-white">
+                                <option value="0.5">Mala (Fragmentada)</option>
+                                <option value="1.0" selected>Regular (Normal)</option>
+                                <option value="1.5">Buena (Reparadora)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-2 font-semibold">Ayudas / Stack Nocturno</label>
+                            <div class="space-y-2 bg-base-300 p-4 rounded-lg">
+                                <label class="flex items-center space-x-3">
+                                    <input type="checkbox" name="sleep-aid" value="natural" class="form-checkbox h-5 w-5 text-accent">
+                                    <span>Magnesio / Glicina (Natural)</span>
+                                </label>
+                                <label class="flex items-center space-x-3">
+                                    <input type="checkbox" name="sleep-aid" value="melatonina" class="form-checkbox h-5 w-5 text-accent">
+                                    <span>Melatonina</span>
+                                </label>
+                                <label class="flex items-center space-x-3">
+                                    <input type="checkbox" name="sleep-aid" value="dormidina" class="form-checkbox h-5 w-5 text-red-500">
+                                    <span class="text-red-300">Farmaco (Dormidina/Benzo)</span>
+                                </label>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">*Farmacos garantizan recuperación base pero causan resaca matutina.</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-300 mb-1 font-semibold text-sm">Fecha Inicio</label>
+                                <input type="date" id="sleep-date" class="w-full bg-base-300 rounded-lg px-2 py-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-gray-300 mb-1 font-semibold text-sm">Hora Inicio</label>
+                                <input type="time" id="sleep-time" class="w-full bg-base-300 rounded-lg px-2 py-2 text-sm">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <button type="button" id="cancel-sleep-btn" class="w-full bg-base-300 hover:bg-gray-600 text-gray-300 font-bold py-3">Cancelar</button>
+                        <button type="submit" class="w-full bg-accent hover:bg-blue-500 text-white font-bold py-3">Registrar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div id="gemini-modal" class="fixed inset-0 z-40 items-center justify-center p-4 hidden modal-backdrop bg-black bg-opacity-75">
             <div class="bg-base-200 rounded-2xl shadow-2xl p-8 w-full max-w-md modal-content transform scale-95">
                 <h2 class="text-3xl font-bold text-white mb-6">Análisis IA</h2>
                 <div id="gemini-loading" class="flex flex-col items-center justify-center h-40">
                     <div class="gemini-spinner"></div>
-                    <p class="mt-4 text-gray-400">Analizando tu estado...</p>
+                    <p class="mt-4 text-gray-400">Analizando...</p>
                 </div>
                 <div id="gemini-response" class="text-gray-300 prose prose-invert max-w-none hidden"></div>
                 <button type="button" id="close-gemini-btn" class="w-full mt-6 bg-base-300 hover:bg-gray-600 text-gray-300 font-bold py-3">Cerrar</button>
             </div>
         </div>
-
         <div id="api-key-modal" class="fixed inset-0 z-50 items-center justify-center p-4 hidden modal-backdrop bg-black bg-opacity-75">
             <div class="bg-base-200 rounded-2xl shadow-2xl p-8 w-full max-w-md modal-content transform scale-95">
-                <h2 class="text-3xl font-bold text-white mb-2">API Key de Gemini</h2>
-                <p class="text-gray-400 mb-6">Para usar el análisis con IA, necesitas una API Key de Google AI Studio. Es gratis.</p>
+                <h2 class="text-3xl font-bold text-white mb-2">API Key</h2>
                 <form id="api-key-form">
                     <div class="mb-4">
-                        <label for="api-key-input" class="block text-gray-300 mb-2 font-semibold">Tu API Key</label>
                         <input type="password" id="api-key-input" class="w-full bg-base-300 border border-gray-600 rounded-lg px-4 py-3 text-white" required>
                     </div>
-                     <p class="text-xs text-gray-500 mb-4">La clave se guardará únicamente en tu navegador. <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-accent hover:underline">Obtén una aquí.</a></p>
                     <div class="flex gap-4">
                          <button type="button" id="cancel-api-key-btn" class="w-full bg-base-300 hover:bg-gray-600 text-gray-300 font-bold py-3">Cancelar</button>
                         <button type="submit" class="w-full bg-accent hover:bg-blue-500 text-white font-bold py-3">Guardar</button>
@@ -127,18 +192,13 @@
                 </form>
             </div>
         </div>
-
         <div id="prompt-settings-modal" class="fixed inset-0 z-50 items-center justify-center p-4 hidden modal-backdrop bg-black bg-opacity-75">
             <div class="bg-base-200 rounded-2xl shadow-2xl p-8 w-full max-w-lg modal-content transform scale-95">
                 <h2 class="text-2xl font-bold text-white mb-4">Configurar Prompt IA</h2>
-                <p class="text-sm text-gray-400 mb-4">Personaliza cómo se comporta la IA. Se guarda en tu navegador.</p>
                 <form id="prompt-settings-form">
-                    <div class="mb-4">
-                        <label for="system-prompt-input" class="block text-gray-300 mb-2 font-semibold">System Prompt</label>
-                        <textarea id="system-prompt-input" rows="6" class="w-full bg-base-300 border border-gray-600 rounded-lg px-4 py-3 text-white text-sm font-mono"></textarea>
-                    </div>
+                    <div class="mb-4"><textarea id="system-prompt-input" rows="6" class="w-full bg-base-300 border border-gray-600 rounded-lg px-4 py-3 text-white text-sm font-mono"></textarea></div>
                     <div class="flex gap-4 justify-between">
-                        <button type="button" id="reset-prompt-btn" class="text-xs text-gray-500 hover:text-white underline">Restaurar Original</button>
+                        <button type="button" id="reset-prompt-btn" class="text-xs text-gray-500 hover:text-white underline">Restaurar</button>
                         <div class="flex gap-4">
                             <button type="button" id="cancel-prompt-btn" class="bg-base-300 hover:bg-gray-600 text-gray-300 font-bold py-2 px-4 rounded-lg">Cancelar</button>
                             <button type="submit" class="bg-accent hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg">Guardar</button>
@@ -173,29 +233,17 @@
             </div>
 
             <div class="bg-base-200 p-4 md:p-6 rounded-2xl shadow-xl mb-6 h-96 relative">
-                <h3 class="text-2xl font-bold text-white mb-4">Evolución (Historial 5 Días + Previsión 2 Días)</h3>
+                <h3 class="text-2xl font-bold text-white mb-4">Evolución (5 Días + 2 Prev.)</h3>
                 <canvas id="neuro-chart"></canvas>
             </div>
             
             <div class="bg-base-200 p-6 rounded-2xl shadow-xl mb-6">
                 <h3 class="text-2xl font-bold text-white mb-4">Estadísticas</h3>
                 <div id="stats-container" class="grid grid-cols-2 md:grid-cols-4 gap-4 text-gray-300">
-                    <div class="bg-base-300 p-3 rounded-lg text-center">
-                        <p class="text-xs text-gray-400">Media Hoy</p>
-                        <p id="avg-today" class="font-bold text-accent text-xl">--</p>
-                    </div>
-                    <div class="bg-base-300 p-3 rounded-lg text-center">
-                        <p class="text-xs text-gray-400">Media Ayer</p>
-                        <p id="avg-yesterday" class="font-bold text-accent text-xl">--</p>
-                    </div>
-                    <div class="bg-base-300 p-3 rounded-lg text-center">
-                        <p class="text-xs text-gray-400">Media 7 Días</p>
-                        <p id="avg-week" class="font-bold text-accent text-xl">--</p>
-                    </div>
-                    <div class="bg-base-300 p-3 rounded-lg text-center">
-                        <p class="text-xs text-gray-400">Media Total</p>
-                        <p id="avg-total" class="font-bold text-accent text-xl">--</p>
-                    </div>
+                    <div class="bg-base-300 p-3 rounded-lg text-center"><p class="text-xs text-gray-400">Hoy</p><p id="avg-today" class="font-bold text-accent text-xl">--</p></div>
+                    <div class="bg-base-300 p-3 rounded-lg text-center"><p class="text-xs text-gray-400">Ayer</p><p id="avg-yesterday" class="font-bold text-accent text-xl">--</p></div>
+                    <div class="bg-base-300 p-3 rounded-lg text-center"><p class="text-xs text-gray-400">7 Días</p><p id="avg-week" class="font-bold text-accent text-xl">--</p></div>
+                    <div class="bg-base-300 p-3 rounded-lg text-center"><p class="text-xs text-gray-400">Total</p><p id="avg-total" class="font-bold text-accent text-xl">--</p></div>
                 </div>
             </div>
 
@@ -204,51 +252,47 @@
                     <h3 class="text-2xl font-bold text-white">Análisis IA</h3>
                     <button id="config-prompt-btn" class="text-xs bg-base-300 hover:bg-gray-600 px-3 py-1 rounded text-gray-300">⚙️ Configurar</button>
                 </div>
-                <p class="text-gray-400 mb-4">Obtén una interpretación de tu estado actual y una recomendación.</p>
-                <div class="flex gap-2">
-                    <button id="analyze-gemini-btn" class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 rounded-lg">
-                        ✨ Analizar mi Estado
-                    </button>
-                </div>
+                <button id="analyze-gemini-btn" class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 rounded-lg">✨ Analizar mi Estado</button>
             </div>
 
             <div class="bg-base-200 p-6 rounded-2xl shadow-xl mb-6">
-                <h3 class="text-2xl font-bold text-white mb-4">¿Cómo te sientes ahora?</h3>
+                <h3 class="text-2xl font-bold text-white mb-4">Sensación</h3>
                 <div class="flex items-center gap-4">
                      <span class="text-lg">😩</span>
                      <input type="range" id="sensacion-slider" min="1" max="10" value="5" class="w-full h-3 bg-base-300 rounded-lg appearance-none">
                      <span class="text-lg">😄</span>
                 </div>
-                 <div class="text-center mt-2">
-                    <span id="sensacion-value" class="font-bold text-accent text-lg">5</span> / 10
-                 </div>
-                <button id="add-sensacion-btn" class="w-full mt-4 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg">Registrar Sensación</button>
+                 <div class="text-center mt-2"><span id="sensacion-value" class="font-bold text-accent text-lg">5</span> / 10</div>
+                <button id="add-sensacion-btn" class="w-full mt-4 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg">Registrar</button>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="bg-base-200 p-6 rounded-2xl shadow-xl">
-                    <h3 class="text-2xl font-bold text-white mb-4">Añadir Evento</h3>
-                    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                        <button data-event="sueño" class="event-btn bg-indigo-600 hover:bg-indigo-700 col-span-1 lg:col-span-3" data-tooltip="Efecto: Resetea el índice a la Línea Base.&#x000A;La calidad afecta la Línea Base a largo plazo.">Sueño</button>
-                        <button data-event="comida" class="event-btn bg-yellow-600 hover:bg-yellow-700 col-span-1 lg:col-span-3" data-tooltip="Efecto: Resetea el reloj de ayuno.&#x000A;El ayuno (14-24h) da un bono de alerta.">Comida</button>
-                        <button data-event="hrv" class="event-btn bg-cyan-600 hover:bg-cyan-700" data-tooltip="Efecto: Modificador temporal según valor.&#x000A;Duración: 3h.&#x000A;Ej: 80ms = +7.5.">HRV</button>
-                        <button data-event="ejercicio" class="event-btn bg-emerald-500 hover:bg-emerald-600" data-tooltip="Efecto: Pico positivo según intensidad.&#x000A;Duración: Sesión + 2h.&#x000A;Ej: 30min medio = +10.">Ejercicio</button>
-                        <button data-event="alcohol" class="event-btn bg-purple-600 hover:bg-purple-700" data-tooltip="Efecto: Pico +8/ud, Bajón -16/ud.&#x000A;Duración: 6h.&#x000A;Ajustado por sexo y peso.">Alcohol</button>
-                        <button data-event="modafinilo" class="event-btn bg-sky-500 hover:bg-sky-600" data-tooltip="Efecto: +20 por 100mg. Pico 7h, decae a 12h, negativo 12-15h.&#x000A;Ajustado por sexo y peso.">Modafinilo</button>
-                        <button data-event="cafeina" class="event-btn bg-yellow-700 hover:bg-yellow-800" data-tooltip="Efecto: Pico +20/taza, Bajón -5/taza.&#x0F;Duración: 4h.">Cafeína</button>
+                    <h3 class="text-2xl font-bold text-white mb-4">Acciones Rápidas</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button id="open-sleep-btn" class="col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-4 rounded-lg flex justify-center items-center gap-2">
+                            <span class="text-2xl">😴</span> Registrar Sueño
+                        </button>
                         
-                        <button data-event="ltheanine" class="event-btn bg-violet-500 hover:bg-violet-600" data-tooltip="Efecto: Pico +10 estable, Sin Bajón.&#x000A;Ideal para combinar con cafeína.">L-Teanina</button>
-                        <button data-event="lionsmane" class="event-btn bg-amber-600 hover:bg-amber-700" data-tooltip="Efecto: Neuro-Reparación.&#x000A;Sube la Línea Base +0.1 permanentemente.">Lion's Mane</button>
+                        <button data-event="comida" class="event-btn bg-yellow-600 hover:bg-yellow-700">Comida</button>
+                        <button data-event="ejercicio" class="event-btn bg-emerald-500 hover:bg-emerald-600">Ejercicio</button>
                         
-                        <button data-event="azucar" class="event-btn bg-gray-400 hover:bg-gray-500" data-tooltip="Efecto: Pico +25, Bajón -15 (medio).&#x000A;Duración: 2h.">Azúcar</button>
-                        <button data-event="porno" class="event-btn bg-orange-500 hover:bg-orange-600" data-tooltip="Efecto: Pico variable, Bajón -10.&#x000A;Duración: Sesión + 1.5h.">Porno</button>
-                        <button data-event="orgasmo" class="event-btn bg-rose-600 hover:bg-rose-700" data-tooltip="Efecto: Pico +40 (3min), Bajón -20.&#x000A;Duración: 2.5h.">Orgasmo</button>
+                        <button data-event="cafeina" class="event-btn bg-yellow-700 hover:bg-yellow-800">Cafeína</button>
+                        <button data-event="modafinilo" class="event-btn bg-sky-500 hover:bg-sky-600">Modafinilo</button>
+                        
+                        <button id="open-supplements-btn" class="col-span-2 bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-lg border border-slate-500">
+                            💊 Abrir Stack / Suplementos
+                        </button>
+
+                        <button data-event="alcohol" class="event-btn bg-purple-600 hover:bg-purple-700">Alcohol</button>
+                        <button data-event="azucar" class="event-btn bg-gray-400 hover:bg-gray-500">Azúcar</button>
+                        <button data-event="masturbacion" class="event-btn bg-pink-500 hover:bg-pink-600">Masturbación</button>
                     </div>
                 </div>
 
                 <div class="bg-base-200 p-6 rounded-2xl shadow-xl">
-                    <h3 class="text-2xl font-bold text-white mb-4">Últimos Eventos</h3>
-                    <div id="active-events" class="space-y-3 max-h-60 overflow-y-auto">
+                    <h3 class="text-2xl font-bold text-white mb-4">Últimos Eventos (50)</h3>
+                    <div id="active-events" class="space-y-3 max-h-80 overflow-y-auto pr-2">
                         <p id="no-events-msg" class="text-gray-400">Sin eventos recientes.</p>
                     </div>
                 </div>
@@ -261,21 +305,21 @@
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <div class="bg-base-200 p-6 rounded-2xl shadow-xl">
-                    <h3 class="text-2xl font-bold text-white mb-4">Días de Abstinencia</h3>
+                    <h3 class="text-2xl font-bold text-white mb-4">Abstinencia</h3>
                     <div id="abstinence-container" class="space-y-2 text-gray-300">
                         <p>Alcohol: <span id="abstinence-alcohol" class="font-bold text-accent">--</span> días</p>
-                        <p>Porno: <span id="abstinence-sexual" class="font-bold text-accent">--</span> días</p>
+                        <p>Masturb.: <span id="abstinence-sexual" class="font-bold text-accent">--</span> días</p>
                         <p>Azúcar: <span id="abstinence-sugar" class="font-bold text-accent">--</span> días</p>
                     </div>
                 </div>
                 <div class="bg-base-200 p-6 rounded-2xl shadow-xl">
-                    <h3 class="text-2xl font-bold text-white mb-4">Calidad del Sueño (Últ. 30 días)</h3>
+                    <h3 class="text-2xl font-bold text-white mb-4">Calidad Sueño (30d)</h3>
                      <div class="w-full h-40"><canvas id="sleep-quality-chart"></canvas></div>
                 </div>
             </div>
             
             <div class="bg-base-200 p-6 rounded-2xl shadow-xl mt-6">
-                <h3 class="text-2xl font-bold text-white mb-4">Días de Consumo (Histórico)</h3>
+                <h3 class="text-2xl font-bold text-white mb-4">Días de Consumo</h3>
                 <div class="flex justify-around">
                     <div class="w-1/2 h-40"><canvas id="alcohol-chart"></canvas></div>
                     <div class="w-1/2 h-40"><canvas id="sexual-chart"></canvas></div>
@@ -286,7 +330,6 @@
     </div>
     
     <script type="module">
-        // Importaciones de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, collection, onSnapshot, query, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -300,14 +343,13 @@
                     currentEventType: null, 
                     charts: {}, 
                     userId: null, 
-                    apiKeyPromise: null,
-                    firebase: {}, 
-                    appId: 'neuro-indice-app',
-                    defaultPrompt: "Eres un asistente experto en neuroquímica y bienestar. Tu tono es informativo, científico pero accesible y empático. No eres un médico, sino un intérprete de un modelo teórico. Explicas el estado actual y el impacto a largo plazo en la línea base."
+                    appId: 'neuro-indice-app', 
+                    defaultPrompt: "Eres un asistente experto en neuroquímica."
                 },
                 ui: {},
                 
                 init() {
+                    // Mapeo manual para asegurar que todo está presente
                     this.ui = {
                         profileSetup: document.getElementById('profile-setup'),
                         mainApp: document.getElementById('main-app'),
@@ -342,10 +384,10 @@
                         geminiResponse: document.getElementById('gemini-response'),
                         closeGeminiBtn: document.getElementById('close-gemini-btn'),
                         userIdDisplay: document.getElementById('user-id-display'),
-                        apiKeyModal: document.getElementById('api-key-modal'),
-                        apiKeyForm: document.getElementById('api-key-form'),
+                        apiInputModal: document.getElementById('api-key-modal'), // Renombrado para evitar conflicto
+                        apiForm: document.getElementById('api-key-form'),
                         apiKeyInput: document.getElementById('api-key-input'),
-                        cancelApiKeyBtn: document.getElementById('cancel-api-key-btn'),
+                        cancelApiBtn: document.getElementById('cancel-api-key-btn'),
                         weeklyBudgetTracker: document.getElementById('weekly-budget-tracker'),
                         abstinenceContainer: document.getElementById('abstinence-container'),
                         avgToday: document.getElementById('avg-today'),
@@ -358,17 +400,21 @@
                         alcoholChart: document.getElementById('alcohol-chart'),
                         sexualChart: document.getElementById('sexual-chart'),
                         sleepQualityChart: document.getElementById('sleep-quality-chart'),
+                        // NUEVOS ELEMENTOS
+                        supplementsModal: document.getElementById('supplements-modal'),
+                        closeSuppBtn: document.getElementById('close-supp-btn'),
+                        openSupplementsBtn: document.getElementById('open-supplements-btn'),
+                        openSleepBtn: document.getElementById('open-sleep-btn'),
+                        sleepWizardModal: document.getElementById('sleep-wizard-modal'),
+                        sleepWizardForm: document.getElementById('sleep-wizard-form'),
+                        cancelSleepBtn: document.getElementById('cancel-sleep-btn')
                     };
                     
-                    document.querySelectorAll('.event-btn').forEach(btn => {
-                        btn.className += ' text-white font-bold py-3 px-4 rounded-lg transition duration-300';
-                    });
+                    document.querySelectorAll('.event-btn').forEach(btn => btn.className += ' text-white font-bold py-3 px-4 rounded-lg transition duration-300');
                     
                     this.ui.activeEventsContainer.addEventListener('click', (e) => {
                         const deleteBtn = e.target.closest('.delete-btn');
-                        if (deleteBtn) {
-                            this.deleteEvent(deleteBtn.dataset.id);
-                        }
+                        if (deleteBtn) this.deleteEvent(deleteBtn.dataset.id);
                     });
                     
                     this.attachEventListeners();
@@ -377,45 +423,21 @@
                 
                 async initFirebase() {
                     try {
-                        const firebaseConfig = {
-                          apiKey: "AIzaSyBYCR_uYoR5yFR1bOjNnnBBKXMz7Mx03ng",
-                          authDomain: "neuro-indice.firebaseapp.com",
-                          projectId: "neuro-indice",
-                          storageBucket: "neuro-indice.firebasestorage.app",
-                          messagingSenderId: "535634519507",
-                          appId: "1:535634519507:web:67b2579b7953941561fb26",
-                          measurementId: "G-YF7S907YT4"
-                        };
-                        
+                        const firebaseConfig = { apiKey: "AIzaSyBYCR_uYoR5yFR1bOjNnnBBKXMz7Mx03ng", authDomain: "neuro-indice.firebaseapp.com", projectId: "neuro-indice", storageBucket: "neuro-indice.firebasestorage.app", messagingSenderId: "535634519507", appId: "1:535634519507:web:67b2579b7953941561fb26", measurementId: "G-YF7S907YT4" };
                         this.state.appId = firebaseConfig.projectId || 'neuro-indice-app'; 
-
                         const app = initializeApp(firebaseConfig);
                         const auth = getAuth(app);
                         const db = getFirestore(app);
                         this.state.firebase = { app, auth, db };
-
                         onAuthStateChanged(auth, async (user) => {
                             if (user) {
                                 this.state.userId = user.uid;
-                                this.ui.userIdDisplay.textContent = `ID Sesión: ${user.uid.substring(0, 8)}...`;
+                                this.ui.userIdDisplay.textContent = `ID: ${user.uid.substring(0, 8)}...`;
                                 await this.loadProfile(); 
-                                if (this.state.userProfile) {
-                                    this.startApp(); 
-                                } else {
-                                    this.ui.profileSetup.classList.remove('hidden'); 
-                                }
-                            } else {
-                                try {
-                                    await signInAnonymously(auth);
-                                } catch (error) {
-                                    console.error("Error en login anónimo:", error);
-                                }
-                            }
+                                if (this.state.userProfile) this.startApp(); else this.ui.profileSetup.classList.remove('hidden'); 
+                            } else { try { await signInAnonymously(auth); } catch (error) { console.error(error); } }
                         });
-
-                    } catch (error) {
-                        console.error("Firebase Initialization Error:", error);
-                    }
+                    } catch (error) { console.error(error); }
                 },
 
                 async startApp() {
@@ -430,87 +452,68 @@
 
                 setupEventListeners() {
                     const { db } = this.state.firebase;
-                    const { appId, userId } = this.state;
-                    if (!db || !appId || !userId) return;
-
+                    if (!db || !this.state.userId) return;
                     const eventsQuery = query(collection(db, `artifacts/${this.state.appId}/users/${this.state.userId}/events`));
                     onSnapshot(eventsQuery, (snapshot) => {
                         this.state.events = snapshot.docs.map(doc => {
                             const data = doc.data();
-                            return {
-                                ...data,
-                                id: doc.id,
-                                startTime: data.startTime.toDate ? data.startTime.toDate().toISOString() : data.startTime
-                            };
+                            return { ...data, id: doc.id, startTime: data.startTime.toDate ? data.startTime.toDate().toISOString() : data.startTime };
                         });
                         this.update();
                     });
                 },
 
                 async loadProfile() {
-                    const { db } = this.state.firebase; 
-                    const { userId, appId } = this.state;
-                    if (!db || !userId || !appId) return;
-                    
-                    const docRef = doc(db, `artifacts/${appId}/users/${userId}/profile/main`);
-                    try {
-                        const docSnap = await getDoc(docRef);
-                        if (docSnap.exists()) {
-                            const profileData = docSnap.data();
-                            this.state.userProfile = {
-                                ...profileData,
-                                dynamicBaseLevel: profileData.dynamicBaseLevel || 100,
-                                lastRecoveryTimestamp: profileData.lastRecoveryTimestamp ? (profileData.lastRecoveryTimestamp.toDate ? profileData.lastRecoveryTimestamp.toDate().toISOString() : profileData.lastRecoveryTimestamp) : null
-                            };
-                            this.ui.sexoInput.value = this.state.userProfile.sexo;
-                            this.ui.pesoInput.value = this.state.userProfile.peso;
-                        } else {
-                            this.state.userProfile = null;
-                        }
-                    } catch (e) { console.error("Error al cargar perfil:", e); }
+                    const { db } = this.state.firebase;
+                    const docRef = doc(db, `artifacts/${this.state.appId}/users/${this.state.userId}/profile/main`);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        this.state.userProfile = { 
+                            ...data, 
+                            dynamicBaseLevel: data.dynamicBaseLevel || 100, 
+                            lastRecoveryTimestamp: data.lastRecoveryTimestamp ? (data.lastRecoveryTimestamp.toDate ? data.lastRecoveryTimestamp.toDate().toISOString() : data.lastRecoveryTimestamp) : null 
+                        };
+                        this.ui.sexoInput.value = this.state.userProfile.sexo;
+                        this.ui.pesoInput.value = this.state.userProfile.peso;
+                    }
                 },
                 
                 async saveProfile(e) {
                     e.preventDefault();
-                    const { db } = this.state.firebase; 
-                    const { userId, appId } = this.state;
+                    const { db } = this.state.firebase;
                     const pesoValue = parseFloat(this.ui.pesoInput.value);
-                    if (pesoValue <= 0) return;
-
-                    const wasFirstTime = !this.state.userProfile;
-                    const userProfileData = {
-                        sexo: this.ui.sexoInput.value,
-                        peso: pesoValue,
-                        dynamicBaseLevel: wasFirstTime ? 100 : this.state.userProfile.dynamicBaseLevel,
-                        lastRecoveryTimestamp: wasFirstTime ? null : (this.state.userProfile.lastRecoveryTimestamp ? new Date(this.state.userProfile.lastRecoveryTimestamp) : null),
+                    const userProfileData = { 
+                        sexo: this.ui.sexoInput.value, 
+                        peso: pesoValue, 
+                        dynamicBaseLevel: this.state.userProfile ? this.state.userProfile.dynamicBaseLevel : 100, 
+                        lastRecoveryTimestamp: this.state.userProfile?.lastRecoveryTimestamp ? new Date(this.state.userProfile.lastRecoveryTimestamp) : null 
                     };
                     this.state.userProfile = userProfileData;
-                    
-                    const docRef = doc(db, `artifacts/${appId}/users/${userId}/profile/main`);
-                    
-                    try {
-                        const dataToSave = { ...userProfileData };
-                        if (dataToSave.lastRecoveryTimestamp) {
-                            dataToSave.lastRecoveryTimestamp = new Date(dataToSave.lastRecoveryTimestamp);
-                        }
-                        await setDoc(docRef, dataToSave);
-
-                        if (wasFirstTime) { this.startApp(); } 
-                        else {
-                            this.ui.profileSetup.classList.add('hidden');
-                            this.update();
-                        }
-                    } catch (error) { console.error("Error al guardar perfil:", error); alert("Error al guardar el perfil."); }
+                    await setDoc(doc(db, `artifacts/${this.state.appId}/users/${this.state.userId}/profile/main`), userProfileData);
+                    this.ui.profileSetup.classList.add('hidden');
+                    this.ui.mainApp.classList.remove('hidden');
+                    this.update();
                 },
                                 
                 async addEvent(type, params = {}, startTime = new Date()) {
                     const { db } = this.state.firebase;
-                    const { userId, appId } = this.state;
                     
+                    // LÓGICA SUEÑO Y SUPLEMENTOS
                     if (type === 'sueño') {
                         const qualityMap = { 1.5: 0.1, 1.0: 0.05, 0.5: -0.2 }; 
                         let qualityFactor = qualityMap[params.intensidad] || 0;
                         if (params.cantidad < 6) qualityFactor -= 0.15;
+                        
+                        // Bonus por stack natural
+                        if (params.aids && params.aids.includes('natural')) qualityFactor += 0.05;
+                        
+                        // Melatonina asegura no bajar (salvo <6h)
+                        if (params.aids && params.aids.includes('melatonina') && qualityFactor < 0.05) qualityFactor = 0.05;
+
+                        // Dormidina: Gran recuperación de base, pero castigo mañana en getEventEffect
+                        if (params.aids && params.aids.includes('dormidina')) qualityFactor = 0.2; 
+
                         this.state.userProfile.dynamicBaseLevel += qualityFactor;
                     }
 
@@ -520,733 +523,358 @@
                     
                     this.state.userProfile.dynamicBaseLevel = Math.min(this.state.userProfile.dynamicBaseLevel, 100);
 
-                    const newEvent = { id: Date.now(), type, params, startTime: startTime };
-                    
-                    const budgets = {
+                    const budgets = { 
                         alcohol: { limit: 6, penalty: 0.1, types: ['alcohol'] }, 
-                        sexual: { limit: 0, penalty: 0.13, types: ['porno'] }, 
-                        azucar: { limit: 6, penalty: 0.04, types: ['azucar']}
+                        azucar: { limit: 6, penalty: 0.04, types: ['azucar']} 
                     };
-
-                    let budgetCategory = null;
-                    for (const category in budgets) {
-                        if (budgets[category].types.includes(type)) {
-                            budgetCategory = category;
-                            break;
+                    
+                    for (const cat in budgets) {
+                        if (budgets[cat].types.includes(type)) {
+                            if (this.getEventCountInWindow(budgets[cat].types, 7*24) + 1 > budgets[cat].limit) {
+                                this.state.userProfile.dynamicBaseLevel -= budgets[cat].penalty;
+                            }
                         }
                     }
 
-                    if (budgetCategory) {
-                        const categoryInfo = budgets[budgetCategory];
-                        const count = this.getEventCountInWindow(categoryInfo.types, 7 * 24) + 1;
-                        if (count > categoryInfo.limit) {
-                            this.state.userProfile.dynamicBaseLevel -= categoryInfo.penalty;
-                        }
-                    }
-
-                    try {
-                        const collectionRef = collection(db, `artifacts/${appId}/users/${userId}/events`);
-                        await addDoc(collectionRef, { type: newEvent.type, params: newEvent.params, startTime: newEvent.startTime, createdAt: serverTimestamp() });
-                        await updateDoc(doc(db, `artifacts/${appId}/users/${userId}/profile/main`), {
-                            dynamicBaseLevel: this.state.userProfile.dynamicBaseLevel
-                        });
-                    } catch (error) { console.error("Error al guardar evento:", error); alert("Error al guardar el evento."); }
+                    await addDoc(collection(db, `artifacts/${this.state.appId}/users/${this.state.userId}/events`), { type, params, startTime, createdAt: serverTimestamp() });
+                    await updateDoc(doc(db, `artifacts/${this.state.appId}/users/${this.state.userId}/profile/main`), { dynamicBaseLevel: this.state.userProfile.dynamicBaseLevel });
                 },
 
                 async deleteEvent(eventId) {
-                    if (!confirm("¿Estás seguro de que quieres eliminar este evento? Se recalcularán las estadísticas.")) return;
-
-                    const { db } = this.state.firebase;
-                    const { userId, appId } = this.state;
-
+                    if (!confirm("¿Estás seguro de que quieres eliminar este evento?")) return;
                     const eventToDelete = this.state.events.find(e => e.id === eventId);
                     if (eventToDelete && eventToDelete.type === 'lionsmane') {
                         this.state.userProfile.dynamicBaseLevel -= 0.1;
-                        try {
-                             await updateDoc(doc(db, `artifacts/${appId}/users/${userId}/profile/main`), {
-                                dynamicBaseLevel: this.state.userProfile.dynamicBaseLevel
-                            });
-                        } catch(e) { console.error("Error al revertir base level", e); }
+                        await updateDoc(doc(this.state.firebase.db, `artifacts/${this.state.appId}/users/${this.state.userId}/profile/main`), { dynamicBaseLevel: this.state.userProfile.dynamicBaseLevel });
                     }
-
-                    try {
-                        await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/events`, eventId));
-                    } catch (error) { console.error("Error al borrar evento:", error); alert("No se pudo borrar el evento."); }
+                    await deleteDoc(doc(this.state.firebase.db, `artifacts/${this.state.appId}/users/${this.state.userId}/events`, eventId));
                 },
 
                 async checkAndApplyRecovery() {
                     if (!this.state.userProfile || this.state.userProfile.dynamicBaseLevel >= 100) return;
-                    const { db } = this.state.firebase;
-                    const { userId, appId } = this.state;
-
-                    const budgets = {
-                        alcohol: { limit: 6, types: ['alcohol'] },
-                        sexual: { limit: 0, types: ['porno'] }, 
-                        azucar: { limit: 6, types: ['azucar']}
-                    };
-                    
-                    let hasExceededBudget = false;
-                    for (const category in budgets) {
-                        const count = this.getEventCountInWindow(budgets[category].types, 7 * 24);
-                        if (count > budgets[category].limit) {
-                            hasExceededBudget = true;
-                            break;
-                        }
+                    const budgets = { alcohol: ['alcohol'], azucar: ['azucar'] };
+                    let exceeded = false;
+                    for (const cat in budgets) {
+                        if (this.getEventCountInWindow(budgets[cat], 7*24) > 6) exceeded = true;
                     }
                     
-                    if (!hasExceededBudget) {
-                        const lastRecoveryTime = this.state.userProfile.lastRecoveryTimestamp ? new Date(this.state.userProfile.lastRecoveryTimestamp).getTime() : 0;
-                        const now = Date.now();
-                        const hoursSinceLastRecovery = (now - lastRecoveryTime) / 3600000;
-
-                        if (hoursSinceLastRecovery >= 24) {
-                            const daysToRecover = Math.floor(hoursSinceLastRecovery / 24);
-                            const recoveryAmount = daysToRecover * 0.2;
-                            
-                            let newBaseLevel = this.state.userProfile.dynamicBaseLevel + recoveryAmount;
-                            newBaseLevel = Math.min(newBaseLevel, 100);
-
-                            this.state.userProfile.dynamicBaseLevel = newBaseLevel;
-                            this.state.userProfile.lastRecoveryTimestamp = new Date().toISOString();
-                            
-                            await updateDoc(doc(db, `artifacts/${appId}/users/${userId}/profile/main`), {
-                                dynamicBaseLevel: newBaseLevel,
-                                lastRecoveryTimestamp: serverTimestamp()
-                            });
+                    if (!exceeded) {
+                        const last = this.state.userProfile.lastRecoveryTimestamp ? new Date(this.state.userProfile.lastRecoveryTimestamp).getTime() : 0;
+                        if ((Date.now() - last) / 3600000 >= 24) {
+                            const newBase = Math.min(this.state.userProfile.dynamicBaseLevel + 0.2, 100);
+                            this.state.userProfile.dynamicBaseLevel = newBase;
+                            await updateDoc(doc(this.state.firebase.db, `artifacts/${this.state.appId}/users/${this.state.userId}/profile/main`), { dynamicBaseLevel: newBase, lastRecoveryTimestamp: serverTimestamp() });
                         }
                     }
                 },
                 
-                getEventCountInWindow(types, windowHours) {
-                    const now = Date.now();
-                    const windowStart = now - (windowHours * 3600000);
-                    return this.state.events.filter(event => 
-                        types.includes(event.type) && new Date(event.startTime).getTime() >= windowStart
-                    ).length;
+                getEventCountInWindow(types, hours) {
+                    return this.state.events.filter(e => types.includes(e.type) && new Date(e.startTime).getTime() >= Date.now() - (hours * 3600000)).length;
+                },
+
+                calculateFactors() { 
+                    const i = Math.max(1, this.state.userProfile.peso); 
+                    return { s: this.state.userProfile.sexo==="Mujer"?1.3:1, w: 75/i }; 
+                },
+
+                getEventEffect(event, f, now) {
+                    const m = (now - new Date(event.startTime).getTime()) / 60000;
+                    if (m < 0) return { effect: 0, finished: false };
+                    
+                    // RESACA DORMIDINA (Castigo matutino)
+                    if (event.type === 'sueño' && event.params.aids && event.params.aids.includes('dormidina')) {
+                        const wakeTime = new Date(event.startTime).getTime() + (event.params.cantidad * 3600000);
+                        const minsSinceWake = (now - wakeTime) / 60000;
+                        if (minsSinceWake >= 0 && minsSinceWake < 360) { // 6h de resaca
+                            return { effect: -15 * (1 - (minsSinceWake / 360)), finished: false };
+                        }
+                    }
+
+                    const map = {
+                        alcohol: { 
+                            d: 360, 
+                            f: () => { 
+                                const q = (event.params.cantidad||1);
+                                const u=8*q*f.s*f.w;
+                                const d=-16*q*f.s*f.w; 
+                                return m<60 ? m/60*u : m<180 ? u+(m-60)/120*(d-u) : m<360 ? d*(1-(m-180)/180) : 0 
+                            } 
+                        },
+                        modafinilo: { 
+                            d: 900, 
+                            f: () => { 
+                                const pk=20*(event.params.cantidad||50)/100*f.w;
+                                const neg=-10; 
+                                if(m<120) return (m/120)*pk; 
+                                if(m<540) return pk; 
+                                if(m<720) return pk*(1-(m-540)/180); 
+                                if(m<900) return ((m-720)/180)*neg; 
+                                return 0; 
+                            } 
+                        },
+                        cafeina: { 
+                            d: 240, 
+                            f: () => { 
+                                const u=20*(event.params.cantidad||1);
+                                const d=-5; 
+                                return m<30 ? m/30*u : m<90 ? u+(m-30)/60*(d-u) : m<240 ? d*(1-(m-90)/150) : 0; 
+                            } 
+                        },
+                        
+                        // SUPLEMENTOS
+                        ltheanine: { 
+                            d: 240, 
+                            f: () => { 
+                                const dose=(event.params.cantidad||500)/500;
+                                const pk=10*dose; 
+                                return m<30 ? m/30*pk : m<210 ? pk : m<240 ? pk*(1-(m-210)/30) : 0; 
+                            } 
+                        },
+                        ltirosina: { 
+                            d: 240, 
+                            f: () => { 
+                                const pk=12; 
+                                return m<45 ? m/45*pk : m<180 ? pk : m<240 ? pk*(1-(m-180)/60) : 0; 
+                            } 
+                        },
+                        taurina: { 
+                            d: 180, 
+                            f: () => { 
+                                const pk=8; 
+                                return m<30 ? m/30*pk : m<150 ? pk : m<180 ? pk*(1-(m-150)/30) : 0; 
+                            } 
+                        },
+                        lionsmane: { d:0, f:()=>0 },
+                        magnesio: { d: 180, f:() => m<180 ? 5*(1-m/180) : 0 },
+                        glicina: { d: 180, f:() => m<180 ? 5*(1-m/180) : 0 },
+
+                        azucar: { 
+                            d: 120, 
+                            f: () => { 
+                                const u=25, d=-15; 
+                                return m<15 ? m/15*u : m<45 ? u+(m-15)/30*(d-u) : m<120 ? d*(1-(m-45)/75) : 0; 
+                            } 
+                        },
+                        masturbacion: { 
+                            d: 60, 
+                            f: () => { 
+                                return m<10 ? m/10*15 : m<60 ? 15+(m-10)/50*(-5-15) : 0; 
+                            } 
+                        }, 
+                        ejercicio: { 
+                            d: 180, 
+                            f: () => { 
+                                const pk=10; 
+                                return m<15 ? m/15*pk : m<45 ? pk : m<180 ? pk*(1-(m-45)/135) : 0; 
+                            } 
+                        },
+                        sensacion: { 
+                            d: 60, 
+                            f: () => { 
+                                const pk=(event.params.cantidad-5)*2.5; 
+                                return m<60 ? pk*(1-m/60) : 0; 
+                            } 
+                        },
+                        hrv: { 
+                            d: 180, 
+                            f: () => { 
+                                const e=(event.params.cantidad-55)*0.3; 
+                                return m<180 ? e*(1-m/180) : 0; 
+                            } 
+                        },
+                        sueño: { d:0, f:()=>0 }, 
+                        comida: { d:0, f:()=>0 }
+                    };
+                    const logic = map[event.type];
+                    if (logic) {
+                        if (logic.d > 0 && m > logic.d) return { effect: 0, finished: true };
+                        return { effect: logic.f(), finished: false };
+                    }
+                    return { effect: 0, finished: false };
+                },
+
+                // Manejadores de Modales
+                openEventModal(type) {
+                    this.state.currentEventType = type;
+                    const date = new Date();
+                    const common = `<div class="grid grid-cols-2 gap-4"><div><label class="block text-gray-300 mb-1 text-sm font-semibold">Fecha</label><input type="date" id="param-date" class="w-full bg-base-300 rounded-lg px-2 py-2" value="${date.toISOString().split('T')[0]}"></div><div><label class="block text-gray-300 mb-1 text-sm font-semibold">Hora</label><input type="time" id="param-time" class="w-full bg-base-300 rounded-lg px-2 py-2" value="${date.toTimeString().slice(0,5)}"></div></div>`;
+                    
+                    const cfgs = {
+                        ltheanine: { t: "L-Teanina", i: `<label>Dosis (mg)</label><input type="number" id="param-cantidad" value="500" step="50" class="w-full bg-base-300 rounded p-2">` },
+                        ltirosina: { t: "L-Tirosina", i: `<label>Dosis (mg)</label><input type="number" id="param-cantidad" value="500" step="250" class="w-full bg-base-300 rounded p-2">` },
+                        taurina: { t: "Taurina", i: `<label>Dosis (mg)</label><input type="number" id="param-cantidad" value="1000" step="500" class="w-full bg-base-300 rounded p-2">` },
+                        lionsmane: { t: "Lion's Mane", i: `<label>Dosis (mg)</label><input type="number" id="param-cantidad" value="500" step="250" class="w-full bg-base-300 rounded p-2">` },
+                        magnesio: { t: "Magnesio", i: `<label>Dosis (mg)</label><input type="number" id="param-cantidad" value="400" class="w-full bg-base-300 rounded p-2">` },
+                        glicina: { t: "Glicina", i: `<label>Dosis (g)</label><input type="number" id="param-cantidad" value="3" class="w-full bg-base-300 rounded p-2">` },
+                        
+                        modafinilo: { t: "Modafinilo", i: `<label>Dosis (mg)</label><input type="number" id="param-cantidad" value="50" step="50" class="w-full bg-base-300 rounded p-2">` },
+                        cafeina: { t: "Cafeína", i: `<label>Tazas</label><input type="number" id="param-cantidad" value="1" class="w-full bg-base-300 rounded p-2">` },
+                        alcohol: { t: "Alcohol", i: `<label>Bebidas</label><input type="number" id="param-cantidad" value="1" class="w-full bg-base-300 rounded p-2">` },
+                        ejercicio: { t: "Ejercicio", i: `<label>Minutos</label><input type="number" id="param-cantidad" value="30" class="w-full bg-base-300 rounded p-2"><label>Intensidad</label><select id="param-intensidad" class="w-full bg-base-300 p-2 rounded"><option value="1">Media</option><option value="1.5">Alta</option></select>` },
+                        azucar: { t: "Azúcar", i: `<label>Nivel</label><select id="param-intensidad" class="w-full bg-base-300 p-2 rounded"><option value="1">Medio</option><option value="2">Alto</option></select>` },
+                        masturbacion: { t: "Masturbación", i: `<label>Minutos</label><input type="number" id="param-cantidad" value="10" class="w-full bg-base-300 rounded p-2">` },
+                        comida: { t: "Comida", i: `` }
+                    };
+
+                    const cfg = cfgs[type] || { t: type, i: `` };
+                    this.ui.eventModalTitle.textContent = cfg.t;
+                    this.ui.eventInputsContainer.innerHTML = cfg.i + common;
+                    this.ui.eventModal.classList.remove('hidden'); this.ui.eventModal.classList.add('flex');
                 },
 
                 handleEventSubmit(e) {
                     e.preventDefault();
                     const params = {};
-                    ['cantidad', 'intensidad'].forEach(p => {
-                        const input = document.getElementById(`param-${p}`);
-                        if (input) params[p] = (input.type === 'number') ? parseFloat(input.value) : input.value;
-                    });
-                    const dateValue = document.getElementById('param-date').value;
-                    const timeValue = document.getElementById('param-time').value;
-                    const eventStartTime = new Date(`${dateValue}T${timeValue}`);
-                    this.addEvent(this.state.currentEventType, params, eventStartTime);
-                    this.closeEventModal();
-                },
-                
-                calculateSleepDebt(now) {
-                    const sleepEvents = this.state.events
-                        .filter(e => e.type === 'sueño')
-                        .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
-
-                    if (sleepEvents.length === 0) return 0; 
-
-                    const lastSleep = sleepEvents[0];
-                    const lastSleepStart = new Date(lastSleep.startTime).getTime();
-                    const lastSleepDurationHours = lastSleep.params.cantidad || 0;
-                    const lastSleepEnd = lastSleepStart + (lastSleepDurationHours * 3600000); 
-
-                    const hoursSinceWaking = (now - lastSleepEnd) / 3600000;
-                    
-                    const awakeThreshold = 18;
-                    if (hoursSinceWaking > awakeThreshold) {
-                        const deprivationHours = Math.floor(hoursSinceWaking - awakeThreshold);
-                        const penalty = deprivationHours * 1.0; 
-                        return -penalty;
-                    }
-                    return 0;
+                    const q = document.getElementById('param-cantidad'); if(q) params.cantidad = parseFloat(q.value);
+                    const i = document.getElementById('param-intensidad'); if(i) params.intensidad = parseFloat(i.value);
+                    const dt = document.getElementById('param-date').value + 'T' + document.getElementById('param-time').value;
+                    this.addEvent(this.state.currentEventType, params, new Date(dt));
+                    this.ui.eventModal.classList.add('hidden'); this.ui.eventModal.classList.remove('flex');
                 },
 
-                calculateFastingBonus(now) {
-                    const foodEvents = this.state.events
-                        .filter(e => e.type === 'comida')
-                        .sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
-
-                    if (foodEvents.length === 0) return 0;
-
-                    const lastFoodTime = new Date(foodEvents[0].startTime).getTime();
-                    const hoursSinceFood = (now - lastFoodTime) / 3600000;
-
-                    const bonusStart = 14; 
-                    const bonusEnd = 24;   
-                    const penaltyStart = 24;
-
-                    if (hoursSinceFood <= bonusStart) return 0; 
-                    if (hoursSinceFood <= bonusEnd) return (hoursSinceFood - bonusStart) * 1.0; 
-                    if (hoursSinceFood > penaltyStart) return (bonusEnd - bonusStart) - ((hoursSinceFood - penaltyStart) * 1.5); 
-                    return 0;
-                },
-
-                update() {
-                    try {
-                        if (!this.state.userProfile) return;
-                        
-                        const allPoints = this.generateAllChartPoints();
-
-                        this.updateStatsAndAbstinence(allPoints);
-
-                        const factors = this.calculateFactors();
-                        let totalEffectNow = 0;
-                        const now = Date.now();
-                        
-                        this.state.events.forEach(event => {
-                            const effectResult = this.getEventEffect(event, factors, now);
-                            totalEffectNow += effectResult.effect;
-                        });
-
-                        totalEffectNow += this.calculateSleepDebt(now);
-                        totalEffectNow += this.calculateFastingBonus(now);
-                        
-                        const displayEvents = this.state.events.filter(event => !this.getEventEffect(event, factors, now).finished);
-                        
-                        this.state.currentIndex = Math.round(this.state.userProfile.dynamicBaseLevel + totalEffectNow);
-                        
-                        this.updateUI(displayEvents, this.calculateSleepDebt(now), this.calculateFastingBonus(now));
-                        this.updateChart(allPoints);
-                    } catch (error) {
-                        console.error("Update cycle error:", error);
-                    }
-                },
-                
-                updateStatsAndAbstinence(allPoints) {
+                // Manejo especial Sueño
+                openSleepModal() {
                     const now = new Date();
-                    const todayStart = new Date(now).setHours(0,0,0,0);
-                    const yesterday = new Date(now);
-                    yesterday.setDate(now.getDate() - 1);
-                    const weekAgo = new Date(now);
-                    weekAgo.setDate(now.getDate() - 7);
-                    
-                    const yesterdayStart = new Date(yesterday).setHours(0,0,0,0);
-                    const yesterdayEnd = new Date(yesterday).setHours(23,59,59,999);
-
-                    const todayPoints = allPoints.filter(p => p.x >= todayStart && p.x <= now.getTime());
-                    const yesterdayPoints = allPoints.filter(p => p.x >= yesterdayStart && p.x <= yesterdayEnd);
-                    const weekPoints = allPoints.filter(p => p.x >= weekAgo.getTime());
-
-                    const avg = (points) => points.length > 0 ? (points.reduce((sum, p) => sum + p.y, 0) / points.length).toFixed(1) : '--';
-
-                    this.ui.avgToday.textContent = avg(todayPoints);
-                    this.ui.avgYesterday.textContent = avg(yesterdayPoints);
-                    this.ui.avgWeek.textContent = avg(weekPoints);
-                    this.ui.avgTotal.textContent = avg(allPoints.filter(p => p.x <= now.getTime()));
-
-                    const lastEventDate = (types) => {
-                        const relevantEvents = this.state.events
-                            .filter(e => types.includes(e.type))
-                            .sort((a,b) => new Date(b.startTime) - new Date(a.startTime));
-                        return relevantEvents.length > 0 ? new Date(relevantEvents[0].startTime) : null;
+                    document.getElementById('sleep-date').value = now.toISOString().split('T')[0];
+                    document.getElementById('sleep-time').value = now.toTimeString().slice(0,5);
+                    this.ui.sleepWizardModal.classList.remove('hidden'); this.ui.sleepWizardModal.classList.add('flex');
+                },
+                handleSleepSubmit(e) {
+                    e.preventDefault();
+                    const aids = [];
+                    document.querySelectorAll('input[name="sleep-aid"]:checked').forEach(c => aids.push(c.value));
+                    const params = {
+                        cantidad: parseFloat(document.getElementById('sleep-hours').value),
+                        intensidad: parseFloat(document.getElementById('sleep-quality').value),
+                        aids: aids
                     };
-
-                    const daysSince = (date) => {
-                        if (!date) return '∞';
-                        return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-                    };
-
-                    this.ui.abstinenceAlcohol.textContent = `${daysSince(lastEventDate(['alcohol']))} días`;
-                    this.ui.abstinenceSexual.textContent = `${daysSince(lastEventDate(['porno']))} días`;
-                    this.ui.abstinenceSugar.textContent = `${daysSince(lastEventDate(['azucar']))} días`;
-
-                    this.updateDonutCharts();
+                    const dt = document.getElementById('sleep-date').value + 'T' + document.getElementById('sleep-time').value;
+                    this.addEvent('sueño', params, new Date(dt));
+                    this.ui.sleepWizardModal.classList.add('hidden'); this.ui.sleepWizardModal.classList.remove('flex');
                 },
 
-                updateUI(displayEvents, sleepDebt, fastingBonus) {
-                    this.ui.userIdDisplay.textContent = `ID Sesión: ${this.state.userId ? this.state.userId.substring(0, 8) : 'Cargando'}...`;
-                    this.ui.currentIndexDisplay.textContent = this.state.currentIndex;
-                    this.ui.baseLevelDisplay.textContent = this.state.userProfile.dynamicBaseLevel.toFixed(2);
-                    
-                    if (sleepDebt < 0) {
-                        this.ui.sleepDebtIndicator.textContent = `Deuda de Sueño: ${sleepDebt.toFixed(1)} pts`;
-                        this.ui.sleepDebtIndicator.classList.remove('hidden');
-                    } else {
-                        this.ui.sleepDebtIndicator.classList.add('hidden');
-                    }
-
-                    if (fastingBonus > 0) {
-                        this.ui.fastingIndicator.textContent = `Bono de Ayuno: +${fastingBonus.toFixed(1)} pts`;
-                        this.ui.fastingIndicator.classList.remove('hidden');
-                    } else if (fastingBonus < 0) {
-                         this.ui.fastingIndicator.textContent = `Hambre: ${fastingBonus.toFixed(1)} pts`;
-                         this.ui.fastingIndicator.classList.remove('hidden');
-                    } else {
-                        this.ui.fastingIndicator.classList.add('hidden');
-                    }
-
-                    const alcoholCount = this.getEventCountInWindow(['alcohol'], 7 * 24);
-                    const sexualCount = this.getEventCountInWindow(['porno'], 7 * 24);
-                    const azucarCount = this.getEventCountInWindow(['azucar'], 7 * 24);
-                    const debt = 100 - this.state.userProfile.dynamicBaseLevel;
-                    const daysToRecover = debt > 0 ? Math.ceil(debt / 0.2) : 0;
-
-                    this.ui.weeklyBudgetTracker.innerHTML = `
-                        <p>Alcohol (7 días): <span class="font-bold ${alcoholCount > 6 ? 'text-red-400' : 'text-green-400'}">${alcoholCount} / 6</span></p>
-                        <p>Porno (7 días): <span class="font-bold ${sexualCount > 0 ? 'text-red-400' : 'text-green-400'}">${sexualCount} / 0</span></p>
-                        <p>Azúcar (7 días): <span class="font-bold ${azucarCount > 6 ? 'text-red-400' : 'text-green-400'}">${azucarCount} / 6</span></p>
-                        ${daysToRecover > 0 ? `<p class="mt-2 text-sm text-gray-400">Días estimados para recuperar base a 100 (con abstinencia): <span class="font-bold text-accent">${daysToRecover}</span></p>` : ''}
-                    `;
-
-                    const base = this.state.userProfile.dynamicBaseLevel;
-                    if (this.state.currentIndex > base + 15) this.ui.currentIndexDisplay.style.color = '#22c55e';
-                    else if (this.state.currentIndex > base + 5) this.ui.currentIndexDisplay.style.color = '#a3e635';
-                    else if (this.state.currentIndex < base - 15) this.ui.currentIndexDisplay.style.color = '#ef4444';
-                    else if (this.state.currentIndex < base - 5) this.ui.currentIndexDisplay.style.color = '#f97316';
-                    else this.ui.currentIndexDisplay.style.color = '#ffffff';
-
-                    this.ui.activeEventsContainer.innerHTML = '';
-                    
-                    const recentEvents = [...this.state.events]
-                        .sort((a,b) => new Date(b.startTime) - new Date(a.startTime))
-                        .slice(0, 50);
-
-                    if (recentEvents.length === 0) {
-                        this.ui.activeEventsContainer.innerHTML = '<p class="text-gray-400">Sin eventos recientes.</p>';
-                    } else {
-                        const now = Date.now();
-                        const factors = this.calculateFactors();
-
-                        recentEvents.forEach(event => {
-                            const effectInfo = this.getEventEffect(event, factors, now);
-                            const isActive = !effectInfo.finished;
-
-                            const eventEl = document.createElement('div');
-                            const activeClass = isActive ? 'opacity-100 border-l-4 border-accent' : 'opacity-40 grayscale';
-                            eventEl.className = `bg-base-300 p-3 rounded-lg flex justify-between items-center ${activeClass} transition-all duration-300 group`;
-                            
-                            let details = '';
-                            if (event.params.cantidad) {
-                                let unit = '';
-                                if (['modafinilo', 'ltheanine', 'lionsmane'].includes(event.type)) unit = 'mg';
-                                else if (['ejercicio', 'porno', 'masturbacion'].includes(event.type)) unit = 'min';
-                                else if (event.type === 'alcohol') unit = 'uds';
-                                else if (event.type === 'sueño') unit = 'h';
-                                else if (event.type === 'hrv') unit = 'ms';
-                                else if (['cafeina', 'te'].includes(event.type)) unit = 'tazas';
-                                details += `${details ? ': ' : ''}${event.params.cantidad} ${unit}`;
-                            }
-                            if (event.params.intensidad) {
-                                const qualityMap = {0.5:'Mala', 1.0:'Regular', 1.5:'Buena'};
-                                const intensityMap = {0.5:'Baja', 0.7:'Baja', 1.0:'Media', 1.5:'Alta', 2.0:'Alta'};
-                                const text = qualityMap[event.params.intensidad] || intensityMap[event.params.intensidad] || '';
-                                details += ` (${text})`;
-                            }
-                            const timeSince = (Date.now() - new Date(event.startTime).getTime()) / 60000;
-                            const timeString = timeSince < 60 ? `${Math.round(timeSince)}m` : `${(timeSince/60).toFixed(1)}h`;
-                            
-                            eventEl.innerHTML = `
-                                <div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="font-bold capitalize">${(event.type || '').replace('cafeina', 'Cafeína').replace('ltheanine', 'L-Teanina').replace('lionsmane', 'Melena de León')}</span>
-                                        ${!isActive ? '<span class="text-xs bg-gray-700 px-2 rounded">Inactivo</span>' : ''}
-                                    </div>
-                                    <span class="text-sm text-gray-400">hace ${timeString}</span>
-                                </div> 
-                                <div class="flex items-center gap-3">
-                                    <button class="delete-btn text-gray-500 hover:text-red-500 p-2 rounded-full hover:bg-base-200 transition" data-id="${event.id}" title="Borrar y recalcular">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
-                                </div>`;
-                            this.ui.activeEventsContainer.appendChild(eventEl);
-                        });
-                    }
-                },
-
-                getApiKey() {
-                    return new Promise((resolve) => {
-                        const savedKey = localStorage.getItem('geminiApiKey_v10');
-                        if (savedKey) {
-                            resolve(savedKey);
-                            return;
-                        }
-                        
-                        this.ui.apiKeyModal.classList.add('flex');
-                        this.ui.apiKeyModal.classList.remove('hidden');
-
-                        const handleSubmit = (e) => {
-                            e.preventDefault();
-                            const apiKey = this.ui.apiKeyInput.value;
-                            if (apiKey) {
-                                localStorage.setItem('geminiApiKey_v10', apiKey);
-                                cleanup();
-                                resolve(apiKey);
-                            }
-                        };
-
-                        const handleCancel = () => {
-                            cleanup();
-                            resolve(null);
-                        };
-
-                        const cleanup = () => {
-                            this.ui.apiKeyModal.classList.add('hidden');
-                            this.ui.apiKeyModal.classList.remove('flex');
-                            this.ui.apiKeyForm.removeEventListener('submit', handleSubmit);
-                            this.ui.cancelApiKeyBtn.removeEventListener('click', handleCancel);
-                        };
-
-                        this.ui.apiKeyForm.addEventListener('submit', handleSubmit);
-                        this.ui.cancelApiKeyBtn.addEventListener('click', handleCancel);
-                    });
-                },
-
-                async handleGeminiAnalysis() {
-                    this.ui.geminiModal.classList.add("flex");
-                    this.ui.geminiModal.classList.remove("hidden");
-                    this.ui.geminiResponse.classList.add("hidden");
-                    this.ui.geminiLoading.classList.remove("hidden");
-                    
-                    const response = await this.callGeminiAPI();
-
-                    this.ui.geminiLoading.classList.add("hidden");
-                    this.ui.geminiResponse.classList.remove("hidden");
-                    this.ui.geminiResponse.textContent = response;
-                },
-
-                async callGeminiAPI() {
-                    const apiKey = await this.getApiKey();
-                    if (!apiKey) {
-                        return "Análisis cancelado. Se necesita una API Key de Gemini para continuar.";
-                    }
-
-                    const savedPrompt = localStorage.getItem('customSystemPrompt');
-                    const systemPrompt = savedPrompt ? savedPrompt : this.state.defaultPrompt;
-
-                    const now = Date.now();
-                    const factors = this.calculateFactors();
-                    const activeEvents = this.state.events.filter(event => !this.getEventEffect(event, factors, now).finished);
-                    let eventsSummary = activeEvents.length > 0 ? activeEvents.map(event => `- Evento: ${event.type}, iniciado hace ${((now - new Date(event.startTime).getTime()) / 3600000).toFixed(1)} horas.`).join('\n') : "No hay eventos activos.";
-                    const userQuery = `Mi perfil fisiológico es: Sexo ${this.state.userProfile.sexo}, Peso ${this.state.userProfile.peso} kg. Mi estado actual es: - Neuro-Índice Actual: ${this.state.currentIndex} - Línea Base Dinámica: ${this.state.userProfile.dynamicBaseLevel.toFixed(2)}. Contexto importante: La Línea Base (homeostasis) ideal es 100. Mi línea base actual se ha ajustado por hábitos a largo plazo. El Índice Actual es la suma de la Línea Base y los efectos temporales de los eventos. Un Índice de ${this.state.currentIndex} sobre una base de ${this.state.userProfile.dynamicBaseLevel.toFixed(2)} significa un estado temporal de ${ (this.state.currentIndex - this.state.userProfile.dynamicBaseLevel).toFixed(0) } puntos. Eventos activos que influyen en el índice: ${eventsSummary}. Basado en estos datos, proporciona un análisis en dos párrafos: 1. **Análisis del Momento:** Explica mi estado actual (el Neuro-Índice de ${this.state.currentIndex}) como resultado de los eventos activos y su efecto sobre mi línea base. 2. **Análisis a Largo Plazo:** Comenta sobre mi Línea Base de ${this.state.userProfile.dynamicBaseLevel.toFixed(2)}. Explica si está por debajo de 100, por qué podría ser, y da una sugerencia práctica y específica para ayudar a recuperarla hacia 100. Tu sugerencia para recuperarla DEBE centrarse exclusivamente en la gestión de los eventos que, según el modelo, penalizan la línea base (alcohol, porno, masturbación, azúcar) dentro de sus presupuestos semanales, y en la calidad del sueño. No des consejos genéricos como tomar el sol o meditar. Sé directo y enfócate en las reglas del modelo. No uses markdown.`;
-                    
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-                    const payload = { contents: [{ parts: [{ text: userQuery }] }], systemInstruction: { parts: [{ text: systemPrompt }] }, };
-                    
-                    try {
-                        let response;
-                        for (let i = 0; i < 5; i++) {
-                            response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                            if (response.ok) break;
-                            if (response.status === 400 || response.status === 403) {
-                                localStorage.removeItem('geminiApiKey_v10');
-                                return "Error de autenticación. Tu API Key parece incorrecta. La hemos borrado para que puedas introducirla de nuevo la próxima vez.";
-                            }
-                            await new Promise(resolve => setTimeout(resolve, 2**i * 1000));
-                        }
-                        if (!response.ok) throw new Error(`API request failed: ${response.status}`);
-                        const result = await response.json();
-                        return result.candidates?.[0]?.content?.parts?.[0]?.text || "No se pudo obtener una respuesta de la IA.";
-                    } catch (error) {
-                        return "Error al conectar con el servicio de IA.";
-                    }
-                },
-                
-                initCharts() {
-                    const commonDoughnutOptions = {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '70%',
-                        plugins: {
-                            legend: { position: 'bottom', labels: { color: '#9ca3af' } },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        let label = context.label || '';
-                                        if (label) label += ': ';
-                                        if (context.parsed !== null) label += context.parsed + '%';
-                                        return label;
-                                    }
-                                }
-                            }
-                        }
-                    };
-
-                    this.state.charts.main = new Chart(this.ui.chartCanvas.getContext('2d'), {
-                        type: 'line', 
-                        data: { 
-                            datasets: [
-                                // DATASETS ASOCIADOS A LOS EJES
-                                { label: 'Historial', data: [], borderColor: '#3b82f6', borderWidth: 3, pointRadius: 0, tension: 0.4, yAxisID: 'y' }, 
-                                { label: 'Previsión', data: [], borderColor: '#60a5fa', borderWidth: 2, pointRadius: 0, tension: 0.4, borderDash: [5, 5], yAxisID: 'y' },
-                                { label: 'Media Móvil (3 Días)', data: [], borderColor: '#f97316', borderWidth: 2, pointRadius: 0, tension: 0.4, borderDash: [2, 2], yAxisID: 'y1' }
-                            ] 
-                        },
-                        options: { 
-                            parsing: false, 
-                            responsive: true, 
-                            maintainAspectRatio: false, 
-                            scales: { 
-                                x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'dd MMM' }, tooltipFormat: 'dd MMM, HH:mm' }, grid: { color: '#374151' }, ticks: { color: '#9ca3af', source: 'auto' } }, 
-                                // EJE Y (Izquierda - Neuro-Index)
-                                y: { type: 'linear', display: true, position: 'left', grid: { color: '#374151' }, ticks: { color: '#9ca3af' }, min: 50, max: 150, title: { display: true, text: 'Neuro-Índice (50-150)', color: '#9ca3af' } },
-                                // EJE Y1 (Derecha - Media Móvil)
-                                y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#f97316' }, min: 80, max: 120, title: { display: true, text: 'Media Móvil (80-120)', color: '#f97316' } }
-                            }, 
-                            plugins: { legend: { display: false }, tooltip: { enabled: false } } 
-                        }
-                    });
-
-                    this.state.charts.alcohol = new Chart(this.ui.alcoholChart.getContext('2d'), {
-                        type: 'doughnut',
-                        data: { labels: ['Días con Alcohol', 'Días sin Alcohol'], datasets: [{ data: [0, 0], backgroundColor: ['#ef4444', '#22c55e'] }] },
-                        options: { ...commonDoughnutOptions, plugins: { ...commonDoughnutOptions.plugins, title: { display: true, text: 'Consumo de Alcohol', color: '#9ca3af' } } }
-                    });
-
-                    this.state.charts.sexual = new Chart(this.ui.sexualChart.getContext('2d'), {
-                        type: 'doughnut',
-                        data: { labels: ['Días con Evento', 'Días sin Evento'], datasets: [{ data: [0, 0], backgroundColor: ['#f97316', '#22c55e'] }] },
-                        options: { ...commonDoughnutOptions, plugins: { ...commonDoughnutOptions.plugins, title: { display: true, text: 'Act. Sexual (Porno)', color: '#9ca3af' } } }
-                    });
-                    
-                    this.state.charts.sleep = new Chart(this.ui.sleepQualityChart.getContext('2d'), {
-                        type: 'doughnut',
-                        data: { labels: ['Sueño Bueno', 'Sueño Regular', 'Sueño Malo'], datasets: [{ data: [0, 0, 0], backgroundColor: ['#22c55e', '#eab308', '#ef4444'] }] },
-                        options: { ...commonDoughnutOptions, plugins: { ...commonDoughnutOptions.plugins, title: { display: true, text: 'Calidad de Sueño (30d)', color: '#9ca3af' } } }
-                    });
-                },
-                
-                openEventModal(t){
-                    this.state.currentEventType=t;
-                    const e=`<div class="grid grid-cols-2 gap-4"><div><label for="param-date" class="block text-gray-300 mb-1 font-semibold">Fecha</label><input type="date" id="param-date" class="w-full bg-base-300 rounded-lg px-4 py-3" required></div><div><label for="param-time" class="block text-gray-300 mb-1 font-semibold">Hora</label><input type="time" id="param-time" class="w-full bg-base-300 rounded-lg px-4 py-3" required></div></div>`;
-                    
-                    const i={
-                        alcohol:{title:"Consumo de Alcohol",inputs:`<label class="font-semibold">Nº de Bebidas</label><input type="number" id="param-cantidad" value="1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
-                        modafinilo:{title:"Dosis de Modafinilo",inputs:`<label class="font-semibold">Dosis (mg)</label><input type="number" id="param-cantidad" value="50" step="50" min="50" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
-                        ejercicio:{title:"Sesión de Ejercicio",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="30" step="10" min="10" class="w-full bg-base-300 rounded-lg px-4 py-3" required><label class="font-semibold">Intensidad</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.7">Baja</option><option value="1.0" selected>Media</option><option value="1.5">Alta</option></select>${e}`},
-                        porno:{title:"Consumo de Pornografía",inputs:`<label class="font-semibold">Duración (min)</label><input type="number" id="param-cantidad" value="15" step="5" min="5" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
-                        cafeina:{title:"Consumo de Cafeína",inputs:`<label class="font-semibold">Nº de Tazas</label><input type="number" id="param-cantidad" value="1" min="1" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
-                        // INICIO CAMBIO SOLICITADO
-                        ltheanine:{title:"Consumo de L-Teanina",inputs:`<label class="font-semibold">Dosis (mg)</label><input type="number" id="param-cantidad" value="500" step="50" min="50" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
-                        // FIN CAMBIO SOLICITADO
-                        lionsmane:{title:"Consumo de Lion's Mane",inputs:`<label class="font-semibold">Dosis (mg)</label><input type="number" id="param-cantidad" value="500" step="250" min="250" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
-                        azucar:{title:"Consumo de Azúcar",inputs:`<label class="font-semibold">Intensidad</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.5">Baja</option><option value="1.0" selected>Media</option><option value="2.0">Alta</option></select>${e}`},
-                        sueño:{title:"Registro de Sueño",inputs:`<label class="font-semibold">Horas Dormidas</label><input type="number" id="param-cantidad" step="0.5" value="8" min="0" class="w-full bg-base-300 rounded-lg px-4 py-3" required><label class="font-semibold">Calidad del Sueño</label><select id="param-intensidad" class="w-full bg-base-300 rounded-lg px-4 py-3"><option value="0.5">Mala</option><option value="1.0" selected>Regular</option><option value="1.5">Buena</option></select>${e}`},
-                        hrv:{title:"Registro de HRV",inputs:`<label class="font-semibold">Valor HRV (ms)</label><input type="number" id="param-cantidad" value="55" min="10" class="w-full bg-base-300 rounded-lg px-4 py-3" required>${e}`},
-                        orgasmo:{title:"Registro de Orgasmo",inputs:e},
-                        comida:{title:"Registrar Comida",inputs:e}
-                    };
-                    
-                    this.ui.eventModalTitle.textContent=i[t].title;
-                    this.ui.eventInputsContainer.innerHTML=i[t].inputs;
-                    const s=new Date;document.getElementById("param-date").valueAsDate=s;
-                    document.getElementById("param-time").value=s.toTimeString().slice(0,5);
-                    this.ui.eventModal.classList.add("flex");
-                    this.ui.eventModal.classList.remove("hidden");
-                    setTimeout(()=>this.ui.eventModal.querySelector(".modal-content").classList.remove("scale-95"),10);
-                },
-                
-                closeEventModal(){this.ui.eventModal.querySelector(".modal-content").classList.add("scale-95"),setTimeout(()=>{this.ui.eventModal.classList.add("hidden"),this.ui.eventModal.classList.remove("flex")},300)},
-                
-                calculateFactors(){const{sexo:t,peso:e}=this.state.userProfile,i=Math.max(1,e);return{factorSexoAlcohol:"Mujer"===t?1.3:1,factorSexoModafiniloDuracionMultiplier:"Mujer"===t?1.2:1,factorPeso:75/i}},
-
-                getEventEffect(event, factors, now) {
-                    const startTime = new Date(event.startTime).getTime();
-                    const minutesElapsed = (now - startTime) / 60000;
-                    if (minutesElapsed < 0) return { effect: 0, finished: false };
-                    let effectValue = 0;
-                    let isFinished = false;
-                    const formulas = {
-                        alcohol: { duration: 360, apply: p => { const q = p.cantidad || 1, u = 8 * q * factors.factorSexoAlcohol * factors.factorPeso, d = -16 * q * factors.factorSexoAlcohol * factors.factorPeso; if (minutesElapsed < 60) return minutesElapsed / 60 * u; if (minutesElapsed < 180) return u + (minutesElapsed - 60) / 120 * (d - u); if (minutesElapsed < 360) return d * (1 - (minutesElapsed - 180) / 180); return 0; } },
-                        modafinilo: {
-                            duration: 900, 
-                            apply: (params) => {
-                                const dosageMultiplier = (params.cantidad || 100) / 100;
-                                const peak = 20 * dosageMultiplier * factors.factorPeso; 
-                                const peakNegative = -10 * dosageMultiplier * factors.factorPeso;
-                                const riseTime = 120; 
-                                const plateauDuration = 420 * factors.factorSexoModafiniloDuracionMultiplier; 
-                                const fallToZeroTime = 180; 
-                                const fallToNegativeTime = 180; 
-                                
-                                const plateauEnd = riseTime + plateauDuration; 
-                                const zeroEnd = plateauEnd + fallToZeroTime; 
-                                const negativePeakEnd = zeroEnd + fallToNegativeTime; 
-
-                                if (minutesElapsed < riseTime) return (minutesElapsed / riseTime) * peak;
-                                if (minutesElapsed < plateauEnd) return peak;
-                                if (minutesElapsed < zeroEnd) return peak * (1 - (minutesElapsed - plateauEnd) / fallToZeroTime);
-                                if (minutesElapsed < negativePeakEnd) return ((minutesElapsed - zeroEnd) / fallToNegativeTime) * peakNegative;
-                                return 0;
-                            }
-                        },
-                        ejercicio: { duration: p => (p.cantidad || 30) + 120, apply: p => { const d = p.cantidad || 30, i = p.intensidad || 1, pk = 10 * i * factors.factorPeso, pD = Math.max(0, d - 15); if (minutesElapsed < 15) return minutesElapsed / 15 * pk; if (minutesElapsed < 15 + pD) return pk; if (minutesElapsed < 15 + pD + 120) return pk * (1 - (minutesElapsed - 15 - pD) / 120); return 0; } }, 
-                        porno: { duration: p => (p.cantidad || 15) + 90, apply: p => { const d = p.cantidad || 15, u = 5 + d / 10, dn = -10; if (minutesElapsed < d) return minutesElapsed / d * u; if (minutesElapsed < d + 20) return u + (minutesElapsed - d) / 20 * (dn - u); if (minutesElapsed < d + 90) return dn * (1 - (minutesElapsed - d - 20) / 70); return 0; } }, 
-                        cafeina: { duration: 240, apply: p => { const q = p.cantidad || 1, u = 20 * q, d = -5 * q; if (minutesElapsed < 30) return minutesElapsed / 30 * u; if (minutesElapsed < 90) return u + (minutesElapsed - 30) / 60 * (d - u); if (minutesElapsed < 240) return d * (1 - (minutesElapsed - 90) / 150); return 0; } }, 
-                        ltheanine: { duration: 240, apply: p => { 
-                            const dose = (p.cantidad || 200) / 200; 
-                            const peak = 10 * dose;
-                            if (minutesElapsed < 30) return minutesElapsed / 30 * peak; 
-                            if (minutesElapsed < 210) return peak; 
-                            if (minutesElapsed < 240) return peak * (1 - (minutesElapsed - 210) / 30); 
-                            return 0; 
-                        }}, 
-                        lionsmane: { duration: 0, apply: p => 0 },
-                        azucar: { duration: 120, apply: p => { const i = p.intensidad || 1, u = 25 * i, d = -15 * i; if (minutesElapsed < 15) return minutesElapsed / 15 * u; if (minutesElapsed < 45) return u + (minutesElapsed - 15) / 30 * (d - u); if (minutesElapsed < 120) return d * (1 - (minutesElapsed - 45) / 75); return 0; } }, 
-                        sensacion: { duration: 60, apply: p => { const v = p.cantidad, pk = (v - 5) * 2.5; return minutesElapsed < 60 ? pk * (1 - minutesElapsed / 60) : 0; } }, 
-                        sueño: { duration: 0, apply: p => 0 }, 
-                        comida: { duration: 0, apply: p => 0 }, 
-                        hrv: { duration: 180, apply: p => { const e = (p.cantidad - 55) * 0.3; return minutesElapsed < 180 ? e * (1 - minutesElapsed / 180) : 0; } }, 
-                        orgasmo: { duration: 150, apply: () => { const u = 40, d = -20; if (minutesElapsed < 3) return u; if (minutesElapsed < 15) return d; if (minutesElapsed < 150) return d * (1 - (minutesElapsed - 15) / 135); return 0; } } 
-                    };
-                    const formula = formulas[event.type];
-                    if (formula) {
-                        const totalDuration = typeof formula.duration === 'function' ? formula.duration(event.params) : formula.duration;
-                        if (minutesElapsed > totalDuration) {
-                            isFinished = true;
-                            effectValue = 0;
-                        } else {
-                            effectValue = formula.apply(event.params);
-                        }
-                    }
-                    return { effect: effectValue, finished: isFinished };
-                },
-                
+                // Lógica de Gráficos y UI
                 generateAllChartPoints() {
-                    const factors = this.calculateFactors();
-                    const baseLevel = this.state.userProfile.dynamicBaseLevel;
+                    const f = this.calculateFactors();
+                    const base = this.state.userProfile.dynamicBaseLevel;
                     const now = new Date();
+                    const start = new Date(now); start.setDate(now.getDate()-5); start.setHours(0,0,0,0);
+                    const end = new Date(now); end.setDate(now.getDate()+2);
+                    const pts = [];
                     
-                    // Ajuste de inicio: 5 DÍAS DE HISTORIAL
-                    const fiveDaysAgo = new Date(now);
-                    fiveDaysAgo.setDate(now.getDate() - 5);
-                    fiveDaysAgo.setHours(0, 0, 0, 0);
-                    const startDate = fiveDaysAgo.getTime();
-                    
-                    // Ajuste de fin: 2 DÍAS DE PREVISIÓN
-                    const twoDaysForward = new Date(now);
-                    twoDaysForward.setDate(now.getDate() + 2);
-                    const endDate = twoDaysForward.getTime();
-                    
-                    const allPoints = [];
-                    const interval = 15 * 60 * 1000; 
+                    const sleepEvents = this.state.events.filter(e => e.type === 'sueño').sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+                    const foodEvents = this.state.events.filter(e => e.type === 'comida').sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 
-                    for (let time = startDate; time <= endDate; time += interval) {
-                        let totalEffect = 0;
-                        this.state.events.forEach(event => {
-                            totalEffect += this.getEventEffect(event, factors, time).effect;
-                        });
-                        totalEffect += this.calculateSleepDebt(time);
-                        totalEffect += this.calculateFastingBonus(time);
-                        allPoints.push({ x: time, y: Math.round(baseLevel + totalEffect) });
-                    }
-                    return allPoints;
-                },
-
-                updateChart(allPoints) {
-                    if (!this.state.charts.main || !allPoints) return;
-                    try {
-                        const now = new Date();
-                        const historicalPoints = allPoints.filter(p => p.x <= now.getTime());
-                        const forecastPoints = allPoints.filter(p => p.x >= now.getTime());
-                        if (forecastPoints.length > 0 && historicalPoints.length > 0) {
-                            forecastPoints.unshift(historicalPoints[historicalPoints.length-1]);
-                        }
-
-                        const movingAveragePoints = [];
-                        // MEDIA MOVIL 3 DÍAS
-                        const maWindow = 3 * 24 * 60 * 60 * 1000; 
-
-                        for(let i = 0; i < allPoints.length; i++) {
-                            const currentPoint = allPoints[i];
-                            const windowStart = currentPoint.x - maWindow;
-                            const pointsInWindow = allPoints.filter(p => p.x >= windowStart && p.x <= currentPoint.x);
-                            
-                            if (pointsInWindow.length > 0) {
-                                const sum = pointsInWindow.reduce((acc, p) => acc + p.y, 0);
-                                movingAveragePoints.push({ x: currentPoint.x, y: sum / pointsInWindow.length });
-                            }
-                        }
-
-                        this.state.charts.main.data.datasets[0].data = historicalPoints;
-                        this.state.charts.main.data.datasets[1].data = forecastPoints;
-                        this.state.charts.main.data.datasets[2].data = movingAveragePoints;
+                    for (let t = start.getTime(); t <= end.getTime(); t += 900000) { // 15min
+                        let eff = 0;
+                        this.state.events.forEach(e => eff += this.getEventEffect(e, f, t).effect);
                         
-                        this.state.charts.main.update('none'); 
-                    } catch (t) {
-                        console.error("Error updating chart:", t);
-                    }
-                },
-                
-                updateDonutCharts() {
-                    const now = new Date();
-                    const historyStartDate = this.state.events.length > 0 ? new Date(this.state.events.sort((a,b) => new Date(a.startTime) - new Date(b.startTime))[0].startTime) : new Date();
-                    const totalDays = Math.max(1, Math.ceil((now.getTime() - historyStartDate.getTime()) / (1000 * 60 * 60 * 24)));
-
-                    const daysWithEvent = (types) => {
-                        const uniqueDays = new Set();
-                        this.state.events.forEach(event => {
-                            if (types.includes(event.type)) {
-                                uniqueDays.add(new Date(event.startTime).toDateString());
+                        // Deuda Sueño (Umbral 21h)
+                        let sleepP = 0;
+                        if (sleepEvents.length > 0) {
+                            const lastS = sleepEvents.find(e => new Date(e.startTime).getTime() < t);
+                            if (lastS) {
+                                const wake = new Date(lastS.startTime).getTime() + ((lastS.params.cantidad||8)*3600000);
+                                const hWake = (t - wake) / 3600000;
+                                if (hWake > 21) sleepP = -(hWake - 21);
                             }
-                        });
-                        return uniqueDays.size;
-                    };
+                        }
+                        
+                        // Fasting
+                        let fastB = 0;
+                        if (foodEvents.length > 0) {
+                            const lastF = foodEvents.find(e => new Date(e.startTime).getTime() < t);
+                            if (lastF) {
+                                const hF = (t - new Date(lastF.startTime).getTime()) / 3600000;
+                                if (hF > 14 && hF <= 24) fastB = hF - 14;
+                                else if (hF > 24) fastB = 10 - (hF - 24)*1.5;
+                            }
+                        }
 
-                    const alcoholDays = daysWithEvent(['alcohol']);
-                    const sexualDays = daysWithEvent(['porno']);
-
-                    this.state.charts.alcohol.data.datasets[0].data = [alcoholDays, totalDays - alcoholDays];
-                    this.state.charts.alcohol.update('none');
-
-                    this.state.charts.sexual.data.datasets[0].data = [sexualDays, totalDays - sexualDays];
-                    this.state.charts.sexual.update('none');
-                    
-                    const thirtyDaysAgo = new Date(now);
-                    thirtyDaysAgo.setDate(now.getDate() - 30);
-                    const sleepEvents = this.state.events.filter(e => e.type === 'sueño' && new Date(e.startTime) >= thirtyDaysAgo);
-                    
-                    let goodSleep = 0;
-                    let regSleep = 0;
-                    let badSleep = 0;
-                    sleepEvents.forEach(e => {
-                        if (e.params.intensidad === 1.5) goodSleep++;
-                        else if (e.params.intensidad === 1.0) regSleep++;
-                        else if (e.params.intensidad === 0.5) badSleep++;
-                    });
-                    
-                    this.state.charts.sleep.data.datasets[0].data = [goodSleep, regSleep, badSleep];
-                    this.state.charts.sleep.update('none');
+                        pts.push({ x: t, y: Math.round(base + eff + sleepP + fastB) });
+                    }
+                    return pts;
                 },
 
-                attachEventListeners(){
-                    this.ui.profileForm.addEventListener("submit",t=>this.saveProfile(t));
-                    this.ui.editProfileBtn.addEventListener("click",()=>this.ui.profileSetup.classList.remove("hidden"));
-                    document.querySelectorAll(".event-btn").forEach(t=>t.addEventListener("click",()=>this.openEventModal(t.dataset.event)));
-                    this.ui.eventForm.addEventListener("submit",t=>this.handleEventSubmit(t));
-                    this.ui.cancelEventBtn.addEventListener("click",()=>this.closeEventModal());
-                    this.ui.sensacionSlider.addEventListener("input",t=>{this.ui.sensacionValue.textContent=t.target.value});
-                    this.ui.addSensacionBtn.addEventListener("click",()=>{const t=parseFloat(this.ui.sensacionSlider.value);this.addEvent("sensacion",{cantidad:t},new Date),this.ui.sensacionSlider.value=5,this.ui.sensacionValue.textContent="5"});
-                    this.ui.analyzeGeminiBtn.addEventListener("click",()=>this.handleGeminiAnalysis());
-                    this.ui.closeGeminiBtn.addEventListener("click",()=>{this.ui.geminiModal.classList.add("hidden"),this.ui.geminiModal.classList.remove("flex")});
-                    this.ui.apiKeyForm.addEventListener("submit", e => { e.preventDefault(); const key = this.ui.apiKeyInput.value; if(key) localStorage.setItem('geminiApiKey_v10', key); this.ui.apiKeyModal.classList.add('hidden'); this.ui.apiKeyModal.classList.remove('flex'); this.handleGeminiAnalysis(); }); 
-                    this.ui.cancelApiKeyBtn.addEventListener("click", () => {this.ui.apiKeyModal.classList.add('hidden'); this.ui.apiKeyModal.classList.remove('flex');});
+                updateChart(pts) {
+                    if (!this.state.charts.main) return;
+                    const now = Date.now();
+                    const hist = pts.filter(p => p.x <= now);
+                    const fore = pts.filter(p => p.x >= now);
+                    if (fore.length && hist.length) fore.unshift(hist[hist.length-1]);
                     
-                    // PROMPT LISTENERS
-                    this.ui.configPromptBtn.addEventListener("click", () => {
-                         const saved = localStorage.getItem('customSystemPrompt');
-                         this.ui.systemPromptInput.value = saved ? saved : this.state.defaultPrompt;
-                         this.ui.promptSettingsModal.classList.remove('hidden');
-                         this.ui.promptSettingsModal.classList.add('flex');
+                    const ma = [];
+                    const win = 3 * 86400000; 
+                    for(let i=0; i<pts.length; i++) {
+                        const sub = pts.filter(p => p.x >= pts[i].x - win && p.x <= pts[i].x);
+                        if (sub.length) ma.push({ x: pts[i].x, y: sub.reduce((a,b)=>a+b.y,0)/sub.length });
+                    }
+
+                    this.state.charts.main.data.datasets[0].data = hist;
+                    this.state.charts.main.data.datasets[1].data = fore;
+                    this.state.charts.main.data.datasets[2].data = ma;
+                    this.state.charts.main.update('none');
+                },
+
+                updateUI() {
+                    this.ui.activeEventsContainer.innerHTML = '';
+                    const rec = [...this.state.events].sort((a,b)=>new Date(b.startTime)-new Date(a.startTime)).slice(0,50);
+                    if(!rec.length) this.ui.activeEventsContainer.innerHTML = '<p class="text-gray-400">Sin eventos.</p>';
+                    else rec.forEach(e => {
+                        const el = document.createElement('div');
+                        const isAct = !this.getEventEffect(e, this.calculateFactors(), Date.now()).finished;
+                        el.className = `bg-base-300 p-3 rounded flex justify-between items-center ${isAct?'border-l-4 border-accent':'opacity-50 grayscale'}`;
+                        el.innerHTML = `<div><span class="font-bold capitalize">${e.type}</span> <span class="text-xs text-gray-400">${e.params.cantidad||''} ${e.params.aids?'+ '+e.params.aids.join(','):''}</span></div>
+                        <button class="delete-btn text-gray-500 hover:text-red-500 p-2" data-id="${e.id}"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>`;
+                        this.ui.activeEventsContainer.appendChild(el);
                     });
-                    this.ui.cancelPromptBtn.addEventListener("click", () => {
-                        this.ui.promptSettingsModal.classList.add('hidden');
-                        this.ui.promptSettingsModal.classList.remove('flex');
-                    });
-                    this.ui.resetPromptBtn.addEventListener("click", () => {
-                        this.ui.systemPromptInput.value = this.state.defaultPrompt;
-                    });
-                    this.ui.promptSettingsForm.addEventListener("submit", (e) => {
-                        e.preventDefault();
-                        localStorage.setItem('customSystemPrompt', this.ui.systemPromptInput.value);
-                        this.ui.promptSettingsModal.classList.add('hidden');
-                        this.ui.promptSettingsModal.classList.remove('flex');
-                    });
+                    
+                    const pts = this.generateAllChartPoints();
+                    this.updateChart(pts);
+                    const curr = pts.filter(p=>p.x<=Date.now()).pop()?.y || 100;
+                    this.ui.currentIndexDisplay.textContent = curr;
+                    this.ui.baseLevelDisplay.textContent = this.state.userProfile.dynamicBaseLevel.toFixed(2);
+                },
+
+                attachEventListeners() {
+                    // Generics
+                    this.ui.profileForm.addEventListener("submit", t => this.saveProfile(t));
+                    this.ui.editProfileBtn.addEventListener("click", () => this.ui.profileSetup.classList.remove("hidden"));
+                    
+                    // Modals
+                    document.querySelectorAll('.event-btn').forEach(t => t.addEventListener("click", () => this.openEventModal(t.dataset.event)));
+                    this.ui.cancelEventBtn.addEventListener("click", () => { this.ui.eventModal.classList.add('hidden'); this.ui.eventModal.classList.remove('flex'); });
+                    this.ui.eventForm.addEventListener("submit", t => this.handleEventSubmit(t));
+
+                    // Stack
+                    this.ui.openSupplementsBtn.addEventListener("click", () => { this.ui.supplementsModal.classList.remove('hidden'); this.ui.supplementsModal.classList.add('flex'); });
+                    this.ui.closeSuppBtn.addEventListener("click", () => { this.ui.supplementsModal.classList.add('hidden'); this.ui.supplementsModal.classList.remove('flex'); });
+                    document.querySelectorAll('.supp-btn').forEach(t => t.addEventListener("click", () => {
+                        this.ui.supplementsModal.classList.add('hidden'); this.ui.supplementsModal.classList.remove('flex');
+                        this.openEventModal(t.dataset.event);
+                    }));
+
+                    // Sleep Wizard
+                    this.ui.openSleepBtn.addEventListener("click", () => this.openSleepModal());
+                    this.ui.cancelSleepBtn.addEventListener("click", () => { this.ui.sleepWizardModal.classList.add('hidden'); this.ui.sleepWizardModal.classList.remove('flex'); });
+                    this.ui.sleepWizardForm.addEventListener("submit", t => this.handleSleepSubmit(t));
+
+                    // Gemini & Others
+                    this.ui.analyzeGeminiBtn.addEventListener("click", () => this.handleGeminiAnalysis());
+                    this.ui.closeGeminiBtn.addEventListener("click", () => { this.ui.geminiModal.classList.add('hidden'); this.ui.geminiModal.classList.remove('flex'); });
+                    this.ui.addSensacionBtn.addEventListener("click", () => { this.addEvent("sensacion", { cantidad: parseFloat(this.ui.sensacionSlider.value) }, new Date()); });
+                    this.ui.sensacionSlider.addEventListener("input", t => this.ui.sensacionValue.textContent = t.target.value);
+                    
+                    // Prompt Config
+                    this.ui.configPromptBtn.addEventListener("click", () => { this.ui.promptSettingsModal.classList.remove('hidden'); this.ui.promptSettingsModal.classList.add('flex'); this.ui.systemPromptInput.value = localStorage.getItem('customSystemPrompt') || this.state.defaultPrompt; });
+                    this.ui.cancelPromptBtn.addEventListener("click", () => { this.ui.promptSettingsModal.classList.add('hidden'); this.ui.promptSettingsModal.classList.remove('flex'); });
+                    this.ui.promptSettingsForm.addEventListener("submit", (e) => { e.preventDefault(); localStorage.setItem('customSystemPrompt', this.ui.systemPromptInput.value); this.ui.promptSettingsModal.classList.add('hidden'); this.ui.promptSettingsModal.classList.remove('flex'); });
+                    
+                    // API Key
+                    this.ui.apiForm.addEventListener("submit", e => { e.preventDefault(); const key = this.ui.apiKeyInput.value; if(key) localStorage.setItem('geminiApiKey_v10', key); this.ui.apiInputModal.classList.add('hidden'); this.ui.apiInputModal.classList.remove('flex'); this.handleGeminiAnalysis(); }); 
+                    this.ui.cancelApiBtn.addEventListener("click", () => {this.ui.apiInputModal.classList.add('hidden'); this.ui.apiInputModal.classList.remove('flex');});
                 }
             };
-
             App.init();
         });
     </script>
